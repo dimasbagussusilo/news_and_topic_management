@@ -30,20 +30,20 @@ deps:
 	@echo "Required Tools Are Available"
 
 dev-env: ## Bootstrap Environment (with a Docker-Compose help).
-	@ docker-compose up -d --build mysql
+	@ docker compose up -d --build mysql
 
 dev-env-test: dev-env ## Run application (within a Docker-Compose help)
 	@ $(MAKE) image-build
-	docker-compose up web
+	docker compose up web
 
 dev-air: $(AIR) ## Starts AIR ( Continuous Development app).
 	air
 
 docker-stop:
-	@ docker-compose down
+	@ docker compose down
 
 docker-teardown:
-	@ docker-compose down --remove-orphans -v
+	@ docker compose down --remove-orphans -v
 
 # ~~~ Code Actions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -111,7 +111,7 @@ image-build:
 # please refer this when introducing the database schema migrations.
 
 # # ~~~ Database Migrations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- 
+
 
 # MYSQL_DSN := "mysql://$(MYSQL_USER):$(MYSQL_PASSWORD)@tcp($(MYSQL_ADDRESS))/$(MYSQL_DATABASE)"
 

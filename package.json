@@ -1,0 +1,23 @@
+{
+    "name": "myorg",
+    "private": true,
+    "scripts": {
+        "build": "pnpm exec moon :build",
+        "lint": "biome lint . --write",
+        "check": "biome check . --write",
+        "format": "biome format . --write",
+        "cleanup": "pnpm -r --parallel --stream run cleanup",
+        "cleanup-workspace": "pnpm run cleanup && pnpm run --color \"/purge:/\"",
+        "update-deps": "npm-check-updates --configFileName .ncurc.json",
+        "purge:artifacts": "pnpm dlx rimraf pnpm-lock.yaml node_modules .moon/cache",
+        "purge:toolchain": "pnpm store prune --force && moon clean --quiet"
+    },
+    "dependencies": {
+        "@moonrepo/cli": "^1.27.6"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "1.8.3",
+        "npm-check-updates": "^17.0.2"
+    },
+    "packageManager": "pnpm@9.7.1"
+}

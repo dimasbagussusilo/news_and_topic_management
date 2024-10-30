@@ -1,30 +1,48 @@
 version: "3.7"
 services:
   web:
-    image: go-clean-arch
-    container_name: article_management_api
+    image: news_and_topic_management
+    container_name: news_and_topic_management_api
     ports:
       - 9090:9090
     depends_on:
       mysql:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     volumes:
       - ./config.json:/app/config.json
 
   mysql:
     image: mysql:8.3
-    container_name: go_clean_arch_mysql
+    container_name: news_and_topic_management_mysql
     command: mysqld --user=root
     volumes:
-      - ./article.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./news.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - 3306:3306
     environment:
-      - MYSQL_DATABASE=article
+      - MYSQL_DATABASE=news_and_topic_management
       - MYSQL_USER=user
       - MYSQL_PASSWORD=password
       - MYSQL_ROOT_PASSWORD=root
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:15
+    container_name: news_and_topic_management_postgres
+    environment:
+      - POSTGRES_DB=news_and_topic_management
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
       retries: 10

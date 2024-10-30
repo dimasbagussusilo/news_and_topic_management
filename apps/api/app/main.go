@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/url"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
+	_ "github.com/lib/pq"
+	//_ "github.com/go-sql-driver/mysql"
 
 	mysqlRepo "github.com/bxcodec/go-clean-arch/internal/repository/mysql"
 
@@ -26,7 +27,7 @@ const (
 )
 
 func init() {
-	err := godotenv.Load()
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -39,18 +40,25 @@ func main() {
 	dbUser := os.Getenv("DATABASE_USER")
 	dbPass := os.Getenv("DATABASE_PASS")
 	dbName := os.Getenv("DATABASE_NAME")
-	connection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbHost, dbPort, dbName)
-	val := url.Values{}
-	val.Add("parseTime", "1")
-	val.Add("loc", "Asia/Jakarta")
-	dsn := fmt.Sprintf("%s?%s", connection, val.Encode())
-	dbConn, err := sql.Open(`mysql`, dsn)
+
+	//connection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbHost, dbPort, dbName)
+	//val := url.Values{}
+	//val.Add("parseTime", "1")
+	//val.Add("loc", "Asia/Jakarta")
+	//dsn := fmt.Sprintf("%s?%s", connection, val.Encode())
+	//dbConn, err := sql.Open(`mysql`, dsn)
+	//if err != nil {
+	//	log.Fatal("failed to open connection to database", err)
+	//}
+	//err = dbConn.Ping()
+	//if err != nil {
+	//	log.Fatal("failed to ping database ", err)
+	//}
+
+	connection := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
+	dbConn, err := sql.Open("postgres", connection)
 	if err != nil {
 		log.Fatal("failed to open connection to database", err)
-	}
-	err = dbConn.Ping()
-	if err != nil {
-		log.Fatal("failed to ping database ", err)
 	}
 
 	defer func() {
@@ -71,6 +79,12 @@ func main() {
 	}
 	timeoutContext := time.Duration(timeout) * time.Second
 	e.Use(middleware.SetRequestContextWithTimeout(timeoutContext))
+
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]any{
+			"status": "ok",
+		})
+	})
 
 	// Prepare Repository
 	authorRepo := mysqlRepo.NewAuthorRepository(dbConn)

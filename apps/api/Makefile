@@ -1,8 +1,13 @@
 # Database
-MYSQL_USER ?= user
-MYSQL_PASSWORD ?= password
-MYSQL_ADDRESS ?= 127.0.0.1:3306
-MYSQL_DATABASE ?= article
+#MYSQL_USER ?= user
+#MYSQL_PASSWORD ?= password
+#MYSQL_ADDRESS ?= 127.0.0.1:3306
+#MYSQL_DATABASE ?= news_and_topic_management
+
+POSTGRES_USER ?= postgres
+POSTGRES_PASSWORD ?= password
+POSTGRES_ADDRESS ?= 127.0.0.1:5432
+POSTGRES_DATABASE ?= news_and_topic_management
 
 # Exporting bin folder to the path for makefile
 export PATH   := $(PWD)/bin:$(PATH)
@@ -20,7 +25,7 @@ include ./misc/make/help.Makefile
 
 # ~~~ Development Environment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-up: dev-env dev-air             ## Startup / Spinup Docker Compose and air
+up: tidy dev-env dev-air             ## Startup / Spinup Docker Compose and air
 down: docker-stop               ## Stop Docker
 destroy: docker-teardown clean  ## Teardown (removes volumes, tmp files, etc...)
 
@@ -29,8 +34,12 @@ deps: $(MIGRATE) $(AIR) $(GOTESTSUM) $(TPARSE) $(MOCKERY) $(GOLANGCI) ## Checks 
 deps:
 	@echo "Required Tools Are Available"
 
+tidy:
+	go mod tidy
+
 dev-env: ## Bootstrap Environment (with a Docker-Compose help).
-	@ docker compose up -d --build mysql
+#	@ docker compose up -d --build mysql
+	@ docker compose up -d --build postgres
 
 dev-env-test: dev-env ## Run application (within a Docker-Compose help)
 	@ $(MAKE) image-build

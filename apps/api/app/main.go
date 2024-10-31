@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/url"
 	"os"
 	"strconv"
 	"time"
@@ -13,11 +14,12 @@ import (
 	_ "github.com/lib/pq"
 	//_ "github.com/go-sql-driver/mysql"
 
-	mysqlRepo "github.com/bxcodec/go-clean-arch/internal/repository/mysql"
+	//mysqlRepo "github.com/bxcodec/go-clean-arch/internal/repository/mysql"
+	postgresRepo "github.com/bxcodec/go-clean-arch/internal/repository/postgres" // Update the repository package
 
-	"github.com/bxcodec/go-clean-arch/article"
 	"github.com/bxcodec/go-clean-arch/internal/rest"
 	"github.com/bxcodec/go-clean-arch/internal/rest/middleware"
+	"github.com/bxcodec/go-clean-arch/news"
 	"github.com/joho/godotenv"
 )
 
@@ -34,7 +36,7 @@ func init() {
 }
 
 func main() {
-	//prepare database
+	// prepare database
 	dbHost := os.Getenv("DATABASE_HOST")
 	dbPort := os.Getenv("DATABASE_PORT")
 	dbUser := os.Getenv("DATABASE_USER")
@@ -48,11 +50,7 @@ func main() {
 	//dsn := fmt.Sprintf("%s?%s", connection, val.Encode())
 	//dbConn, err := sql.Open(`mysql`, dsn)
 	//if err != nil {
-	//	log.Fatal("failed to open connection to database", err)
-	//}
-	//err = dbConn.Ping()
-	//if err != nil {
-	//	log.Fatal("failed to ping database ", err)
+	//    log.Fatal("failed to open connection to database", err)
 	//}
 
 	connection := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
@@ -61,14 +59,19 @@ func main() {
 		log.Fatal("failed to open connection to database", err)
 	}
 
+	err = dbConn.Ping()
+	if err != nil {
+		log.Fatal("failed to ping database ", err)
+	}
+
 	defer func() {
 		err := dbConn.Close()
 		if err != nil {
 			log.Fatal("got error when closing the DB connection", err)
 		}
 	}()
-	// prepare echo
 
+	// prepare echo
 	e := echo.New()
 	e.Use(middleware.CORS)
 	timeoutStr := os.Getenv("CONTEXT_TIMEOUT")
@@ -87,12 +90,17 @@ func main() {
 	})
 
 	// Prepare Repository
-	authorRepo := mysqlRepo.NewAuthorRepository(dbConn)
-	articleRepo := mysqlRepo.NewArticleRepository(dbConn)
+	//authorRepo := mysqlRepo.NewAuthorRepository(dbConn)   // Use MySQL repo
+	//newsRepo := mysqlRepo.NewNewsRepository(dbConn) // Use MySQL repo
+
+	newsRepo := postgresRepo.NewNewsRepository(dbConn)           // Use PostgreSQL repo
+	authorRepo := postgresRepo.NewAuthorRepository(dbConn)       // Use PostgreSQL repo
+	topicRepo := postgresRepo.NewTopicRepository(dbConn)         // Use PostgreSQL repo
+	newsTopicRepo := postgresRepo.NewNewsTopicRepository(dbConn) // Use PostgreSQL repo
 
 	// Build service Layer
-	svc := article.NewService(articleRepo, authorRepo)
-	rest.NewArticleHandler(e, svc)
+	svc := news.NewService(newsRepo, authorRepo, topicRepo, newsTopicRepo)
+	rest.NewNewsHandler(e, svc)
 
 	// Start Server
 	address := os.Getenv("SERVER_ADDRESS")

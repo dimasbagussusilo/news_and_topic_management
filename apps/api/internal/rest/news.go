@@ -2,12 +2,13 @@ package rest
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
-	validator "gopkg.in/go-playground/validator.v9"
+	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/bxcodec/go-clean-arch/domain"
 )
@@ -17,38 +18,38 @@ type ResponseError struct {
 	Message string `json:"message"`
 }
 
-// ArticleService represent the article's usecases
+// NewsService represent the news's use cases
 //
-//go:generate mockery --name ArticleService
-type ArticleService interface {
-	Fetch(ctx context.Context, cursor string, num int64) ([]domain.Article, string, error)
-	GetByID(ctx context.Context, id int64) (domain.Article, error)
-	Update(ctx context.Context, ar *domain.Article) error
-	GetByTitle(ctx context.Context, title string) (domain.Article, error)
-	Store(context.Context, *domain.Article) error
+//go:generate mockery --name NewsService
+type NewsService interface {
+	Fetch(ctx context.Context, cursor string, num int64) ([]domain.News, string, error)
+	GetByID(ctx context.Context, id int64) (domain.News, error)
+	Update(ctx context.Context, ar *domain.News) error
+	GetByTitle(ctx context.Context, title string) (domain.News, error)
+	Store(context.Context, *domain.News) error
 	Delete(ctx context.Context, id int64) error
 }
 
-// ArticleHandler  represent the httphandler for article
-type ArticleHandler struct {
-	Service ArticleService
+// NewsHandler  represent the http handler for news
+type NewsHandler struct {
+	Service NewsService
 }
 
 const defaultNum = 10
 
-// NewArticleHandler will initialize the articles/ resources endpoint
-func NewArticleHandler(e *echo.Echo, svc ArticleService) {
-	handler := &ArticleHandler{
+// NewNewsHandler will initialize the news/ resources endpoint
+func NewNewsHandler(e *echo.Echo, svc NewsService) {
+	handler := &NewsHandler{
 		Service: svc,
 	}
-	e.GET("/articles", handler.FetchArticle)
-	e.POST("/articles", handler.Store)
-	e.GET("/articles/:id", handler.GetByID)
-	e.DELETE("/articles/:id", handler.Delete)
+	e.GET("/news", handler.FetchNews)
+	e.POST("/news", handler.Store)
+	e.GET("/news/:id", handler.GetByID)
+	e.DELETE("/news/:id", handler.Delete)
 }
 
-// FetchArticle will fetch the article based on given params
-func (a *ArticleHandler) FetchArticle(c echo.Context) error {
+// FetchNews will fetch the news based on given params
+func (a *NewsHandler) FetchNews(c echo.Context) error {
 
 	numS := c.QueryParam("num")
 	num, err := strconv.Atoi(numS)
@@ -68,8 +69,8 @@ func (a *ArticleHandler) FetchArticle(c echo.Context) error {
 	return c.JSON(http.StatusOK, listAr)
 }
 
-// GetByID will get article by given id
-func (a *ArticleHandler) GetByID(c echo.Context) error {
+// GetByID will get news by given id
+func (a *NewsHandler) GetByID(c echo.Context) error {
 	idP, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
@@ -86,7 +87,7 @@ func (a *ArticleHandler) GetByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, art)
 }
 
-func isRequestValid(m *domain.Article) (bool, error) {
+func isRequestValid(m *domain.News) (bool, error) {
 	validate := validator.New()
 	err := validate.Struct(m)
 	if err != nil {
@@ -95,30 +96,29 @@ func isRequestValid(m *domain.Article) (bool, error) {
 	return true, nil
 }
 
-// Store will store the article by given request body
-func (a *ArticleHandler) Store(c echo.Context) (err error) {
-	var article domain.Article
-	err = c.Bind(&article)
+// Store will store the news by given request body
+func (a *NewsHandler) Store(c echo.Context) (err error) {
+	var news domain.News
+	err = c.Bind(&news)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	var ok bool
-	if ok, err = isRequestValid(&article); !ok {
+	if _, err = isRequestValid(&news); err != nil {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
 	ctx := c.Request().Context()
-	err = a.Service.Store(ctx, &article)
+	err = a.Service.Store(ctx, &news)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, article)
+	return c.JSON(http.StatusCreated, news)
 }
 
-// Delete will delete article by given param
-func (a *ArticleHandler) Delete(c echo.Context) error {
+// Delete will delete news by given param
+func (a *NewsHandler) Delete(c echo.Context) error {
 	idP, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
@@ -141,12 +141,12 @@ func getStatusCode(err error) int {
 	}
 
 	logrus.Error(err)
-	switch err {
-	case domain.ErrInternalServerError:
+	switch {
+	case errors.Is(err, domain.ErrInternalServerError):
 		return http.StatusInternalServerError
-	case domain.ErrNotFound:
+	case errors.Is(err, domain.ErrNotFound):
 		return http.StatusNotFound
-	case domain.ErrConflict:
+	case errors.Is(err, domain.ErrConflict):
 		return http.StatusConflict
 	default:
 		return http.StatusInternalServerError

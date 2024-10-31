@@ -22,27 +22,27 @@ import (
 )
 
 func TestFetch(t *testing.T) {
-	var mockArticle domain.Article
-	err := faker.FakeData(&mockArticle)
+	var mockNews domain.News
+	err := faker.FakeData(&mockNews)
 	assert.NoError(t, err)
-	mockUCase := new(mocks.ArticleService)
-	mockListArticle := make([]domain.Article, 0)
-	mockListArticle = append(mockListArticle, mockArticle)
+	mockUCase := new(mocks.NewsService)
+	mockListNews := make([]domain.News, 0)
+	mockListNews = append(mockListNews, mockNews)
 	num := 1
 	cursor := "2"
-	mockUCase.On("Fetch", mock.Anything, cursor, int64(num)).Return(mockListArticle, "10", nil)
+	mockUCase.On("Fetch", mock.Anything, cursor, int64(num)).Return(mockListNews, "10", nil)
 
 	e := echo.New()
 	req, err := http.NewRequestWithContext(context.TODO(),
-		echo.GET, "/article?num=1&cursor="+cursor, strings.NewReader(""))
+		echo.GET, "/news?num=1&cursor="+cursor, strings.NewReader(""))
 	assert.NoError(t, err)
 
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	handler := rest.ArticleHandler{
+	handler := rest.NewsHandler{
 		Service: mockUCase,
 	}
-	err = handler.FetchArticle(c)
+	err = handler.FetchNews(c)
 	require.NoError(t, err)
 
 	responseCursor := rec.Header().Get("X-Cursor")
@@ -52,21 +52,21 @@ func TestFetch(t *testing.T) {
 }
 
 func TestFetchError(t *testing.T) {
-	mockUCase := new(mocks.ArticleService)
+	mockUCase := new(mocks.NewsService)
 	num := 1
 	cursor := "2"
 	mockUCase.On("Fetch", mock.Anything, cursor, int64(num)).Return(nil, "", domain.ErrInternalServerError)
 
 	e := echo.New()
-	req, err := http.NewRequestWithContext(context.TODO(), echo.GET, "/article?num=1&cursor="+cursor, strings.NewReader(""))
+	req, err := http.NewRequestWithContext(context.TODO(), echo.GET, "/news?num=1&cursor="+cursor, strings.NewReader(""))
 	assert.NoError(t, err)
 
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	handler := rest.ArticleHandler{
+	handler := rest.NewsHandler{
 		Service: mockUCase,
 	}
-	err = handler.FetchArticle(c)
+	err = handler.FetchNews(c)
 	require.NoError(t, err)
 
 	responseCursor := rec.Header().Get("X-Cursor")
@@ -76,26 +76,26 @@ func TestFetchError(t *testing.T) {
 }
 
 func TestGetByID(t *testing.T) {
-	var mockArticle domain.Article
-	err := faker.FakeData(&mockArticle)
+	var mockNews domain.News
+	err := faker.FakeData(&mockNews)
 	assert.NoError(t, err)
 
-	mockUCase := new(mocks.ArticleService)
+	mockUCase := new(mocks.NewsService)
 
-	num := int(mockArticle.ID)
+	num := int(mockNews.ID)
 
-	mockUCase.On("GetByID", mock.Anything, int64(num)).Return(mockArticle, nil)
+	mockUCase.On("GetByID", mock.Anything, int64(num)).Return(mockNews, nil)
 
 	e := echo.New()
-	req, err := http.NewRequestWithContext(context.TODO(), echo.GET, "/article/"+strconv.Itoa(num), strings.NewReader(""))
+	req, err := http.NewRequestWithContext(context.TODO(), echo.GET, "/news/"+strconv.Itoa(num), strings.NewReader(""))
 	assert.NoError(t, err)
 
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.SetPath("article/:id")
+	c.SetPath("news/:id")
 	c.SetParamNames("id")
 	c.SetParamValues(strconv.Itoa(num))
-	handler := rest.ArticleHandler{
+	handler := rest.NewsHandler{
 		Service: mockUCase,
 	}
 	err = handler.GetByID(c)
@@ -106,32 +106,32 @@ func TestGetByID(t *testing.T) {
 }
 
 func TestStore(t *testing.T) {
-	mockArticle := domain.Article{
+	mockNews := domain.News{
 		Title:     "Title",
 		Content:   "Content",
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	tempMockArticle := mockArticle
-	tempMockArticle.ID = 0
-	mockUCase := new(mocks.ArticleService)
+	tempMockNews := mockNews
+	tempMockNews.ID = 0
+	mockUCase := new(mocks.NewsService)
 
-	j, err := json.Marshal(tempMockArticle)
+	j, err := json.Marshal(tempMockNews)
 	assert.NoError(t, err)
 
-	mockUCase.On("Store", mock.Anything, mock.AnythingOfType("*domain.Article")).Return(nil)
+	mockUCase.On("Store", mock.Anything, mock.AnythingOfType("*domain.News")).Return(nil)
 
 	e := echo.New()
-	req, err := http.NewRequestWithContext(context.TODO(), echo.POST, "/article", strings.NewReader(string(j)))
+	req, err := http.NewRequestWithContext(context.TODO(), echo.POST, "/news", strings.NewReader(string(j)))
 	assert.NoError(t, err)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.SetPath("/article")
+	c.SetPath("/news")
 
-	handler := rest.ArticleHandler{
+	handler := rest.NewsHandler{
 		Service: mockUCase,
 	}
 	err = handler.Store(c)
@@ -142,26 +142,26 @@ func TestStore(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	var mockArticle domain.Article
-	err := faker.FakeData(&mockArticle)
+	var mockNews domain.News
+	err := faker.FakeData(&mockNews)
 	assert.NoError(t, err)
 
-	mockUCase := new(mocks.ArticleService)
+	mockUCase := new(mocks.NewsService)
 
-	num := int(mockArticle.ID)
+	num := int(mockNews.ID)
 
 	mockUCase.On("Delete", mock.Anything, int64(num)).Return(nil)
 
 	e := echo.New()
-	req, err := http.NewRequestWithContext(context.TODO(), echo.DELETE, "/article/"+strconv.Itoa(num), strings.NewReader(""))
+	req, err := http.NewRequestWithContext(context.TODO(), echo.DELETE, "/news/"+strconv.Itoa(num), strings.NewReader(""))
 	assert.NoError(t, err)
 
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.SetPath("article/:id")
+	c.SetPath("news/:id")
 	c.SetParamNames("id")
 	c.SetParamValues(strconv.Itoa(num))
-	handler := rest.ArticleHandler{
+	handler := rest.NewsHandler{
 		Service: mockUCase,
 	}
 	err = handler.Delete(c)

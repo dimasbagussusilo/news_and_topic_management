@@ -42,7 +42,7 @@ func TestFetch(t *testing.T) {
 	handler := rest.NewsHandler{
 		Service: mockUCase,
 	}
-	err = handler.FetchNews(c)
+	err = handler.Fetch(c)
 	require.NoError(t, err)
 
 	responseCursor := rec.Header().Get("X-Cursor")
@@ -66,7 +66,7 @@ func TestFetchError(t *testing.T) {
 	handler := rest.NewsHandler{
 		Service: mockUCase,
 	}
-	err = handler.FetchNews(c)
+	err = handler.Fetch(c)
 	require.NoError(t, err)
 
 	responseCursor := rec.Header().Get("X-Cursor")

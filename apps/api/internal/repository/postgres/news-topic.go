@@ -19,8 +19,8 @@ func NewNewsTopicRepository(conn *sql.DB) *NewsTopicRepository {
 	return &NewsTopicRepository{conn}
 }
 
-func (m *NewsTopicRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.NewsTopic, err error) {
-	rows, err := m.Conn.QueryContext(ctx, query, args...)
+func (ntr *NewsTopicRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.NewsTopic, err error) {
+	rows, err := ntr.Conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.Error(err)
 		return nil, err
@@ -48,11 +48,11 @@ func (m *NewsTopicRepository) fetch(ctx context.Context, query string, args ...i
 	return result, nil
 }
 
-func (m *NewsTopicRepository) GetByNewsID(ctx context.Context, newsId int64) (res []domain.NewsTopic, err error) {
+func (ntr *NewsTopicRepository) GetByNewsID(ctx context.Context, newsId int64) (res []domain.NewsTopic, err error) {
 	query := `SELECT news_id, topic_id
 			  FROM news_topic WHERE news_id = $1`
 
-	list, err := m.fetch(ctx, query, newsId)
+	list, err := ntr.fetch(ctx, query, newsId)
 	if err != nil {
 		return []domain.NewsTopic{}, err
 	}
@@ -64,11 +64,11 @@ func (m *NewsTopicRepository) GetByNewsID(ctx context.Context, newsId int64) (re
 	return list, nil
 }
 
-func (m *NewsTopicRepository) GetByTopicID(ctx context.Context, topicId int64) (res []domain.NewsTopic, err error) {
-	query := `SELECT id, title, content, author_id, updated_at, created_at
+func (ntr *NewsTopicRepository) GetByTopicID(ctx context.Context, topicId int64) (res []domain.NewsTopic, err error) {
+	query := `SELECT news_id, topic_id
 			  FROM news_topic WHERE topic_id = $1`
 
-	list, err := m.fetch(ctx, query, topicId)
+	list, err := ntr.fetch(ctx, query, topicId)
 	if err != nil {
 		return []domain.NewsTopic{}, err
 	}
@@ -80,22 +80,48 @@ func (m *NewsTopicRepository) GetByTopicID(ctx context.Context, topicId int64) (
 	return list, nil
 }
 
-func (m *NewsTopicRepository) Store(ctx context.Context, nt *domain.NewsTopic) (err error) {
+func (ntr *NewsTopicRepository) Store(ctx context.Context, nt *domain.NewsTopic) (err error) {
 	query := `INSERT INTO news_topic (news_id, topic_id)
-			  VALUES ($1, $2) RETURNING id`
-	err = m.Conn.QueryRowContext(ctx, query, nt.NewsID, nt.TopicID).Scan(&nt.NewsID, &nt.TopicID)
+			  VALUES ($1, $2) RETURNING news_id, topic_id`
+	err = ntr.Conn.QueryRowContext(ctx, query, nt.NewsID, nt.TopicID).Scan(&nt.NewsID, &nt.TopicID)
 	return
 }
 
-func (m *NewsTopicRepository) Delete(ctx context.Context, newsId int64, topicId int64) (err error) {
+func (ntr *NewsTopicRepository) Delete(ctx context.Context, newsId int64, topicId int64) (err error) {
 	query := "DELETE FROM news_topic WHERE news_id = $1 AND topic_id = $2"
 
-	stmt, err := m.Conn.PrepareContext(ctx, query)
+	stmt, err := ntr.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return
 	}
 
 	res, err := stmt.ExecContext(ctx, newsId, topicId)
+	if err != nil {
+		return
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return
+	}
+
+	if rowsAffected != 1 {
+		err = fmt.Errorf("unexpected behavior: total affected rows = %d", rowsAffected)
+		return
+	}
+
+	return
+}
+
+func (ntr *NewsTopicRepository) DeleteByNewsID(ctx context.Context, newsId int64) (err error) {
+	query := "DELETE FROM news_topic WHERE news_id = $1"
+
+	stmt, err := ntr.Conn.PrepareContext(ctx, query)
+	if err != nil {
+		return
+	}
+
+	res, err := stmt.ExecContext(ctx, newsId)
 	if err != nil {
 		return
 	}

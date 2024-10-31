@@ -13,7 +13,7 @@ import (
 	newsPostgresRepo "github.com/bxcodec/go-clean-arch/internal/repository/postgres"
 )
 
-func TestFetchNews(t *testing.T) {
+func TestFetch(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)

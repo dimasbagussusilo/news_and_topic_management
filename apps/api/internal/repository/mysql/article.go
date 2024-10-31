@@ -11,16 +11,16 @@ import (
 	"github.com/bxcodec/go-clean-arch/internal/repository"
 )
 
-type ArticleRepository struct {
+type NewsRepository struct {
 	Conn *sql.DB
 }
 
-// NewArticleRepository will create an object that represent the article.Repository interface
-func NewArticleRepository(conn *sql.DB) *ArticleRepository {
-	return &ArticleRepository{conn}
+// NewNewsRepository will create an object that represent the news.Repository interface
+func NewNewsRepository(conn *sql.DB) *NewsRepository {
+	return &NewsRepository{conn}
 }
 
-func (m *ArticleRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.Article, err error) {
+func (m *NewsRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.News, err error) {
 	rows, err := m.Conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.Error(err)
@@ -34,9 +34,9 @@ func (m *ArticleRepository) fetch(ctx context.Context, query string, args ...int
 		}
 	}()
 
-	result = make([]domain.Article, 0)
+	result = make([]domain.News, 0)
 	for rows.Next() {
-		t := domain.Article{}
+		t := domain.News{}
 		authorID := int64(0)
 		err = rows.Scan(
 			&t.ID,
@@ -51,7 +51,7 @@ func (m *ArticleRepository) fetch(ctx context.Context, query string, args ...int
 			logrus.Error(err)
 			return nil, err
 		}
-		t.Author = domain.Author{
+		t.Author = domain.AuthorNews{
 			ID: authorID,
 		}
 		result = append(result, t)
@@ -60,9 +60,9 @@ func (m *ArticleRepository) fetch(ctx context.Context, query string, args ...int
 	return result, nil
 }
 
-func (m *ArticleRepository) Fetch(ctx context.Context, cursor string, num int64) (res []domain.Article, nextCursor string, err error) {
+func (m *NewsRepository) Fetch(ctx context.Context, cursor string, num int64) (res []domain.News, nextCursor string, err error) {
 	query := `SELECT id,title,content, author_id, updated_at, created_at
-  						FROM article WHERE created_at > ? ORDER BY created_at LIMIT ? `
+  						FROM news WHERE created_at > ? ORDER BY created_at LIMIT ? `
 
 	decodedCursor, err := repository.DecodeCursor(cursor)
 	if err != nil && cursor != "" {
@@ -80,13 +80,13 @@ func (m *ArticleRepository) Fetch(ctx context.Context, cursor string, num int64)
 
 	return
 }
-func (m *ArticleRepository) GetByID(ctx context.Context, id int64) (res domain.Article, err error) {
+func (m *NewsRepository) GetByID(ctx context.Context, id int64) (res domain.News, err error) {
 	query := `SELECT id,title,content, author_id, updated_at, created_at
-  						FROM article WHERE ID = ?`
+  						FROM news WHERE ID = ?`
 
 	list, err := m.fetch(ctx, query, id)
 	if err != nil {
-		return domain.Article{}, err
+		return domain.News{}, err
 	}
 
 	if len(list) > 0 {
@@ -98,9 +98,9 @@ func (m *ArticleRepository) GetByID(ctx context.Context, id int64) (res domain.A
 	return
 }
 
-func (m *ArticleRepository) GetByTitle(ctx context.Context, title string) (res domain.Article, err error) {
+func (m *NewsRepository) GetByTitle(ctx context.Context, title string) (res domain.News, err error) {
 	query := `SELECT id,title,content, author_id, updated_at, created_at
-  						FROM article WHERE title = ?`
+  						FROM news WHERE title = ?`
 
 	list, err := m.fetch(ctx, query, title)
 	if err != nil {
@@ -115,8 +115,8 @@ func (m *ArticleRepository) GetByTitle(ctx context.Context, title string) (res d
 	return
 }
 
-func (m *ArticleRepository) Store(ctx context.Context, a *domain.Article) (err error) {
-	query := `INSERT  article SET title=? , content=? , author_id=?, updated_at=? , created_at=?`
+func (m *NewsRepository) Store(ctx context.Context, a *domain.News) (err error) {
+	query := `INSERT  news SET title=? , content=? , author_id=?, updated_at=? , created_at=?`
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return
@@ -134,8 +134,8 @@ func (m *ArticleRepository) Store(ctx context.Context, a *domain.Article) (err e
 	return
 }
 
-func (m *ArticleRepository) Delete(ctx context.Context, id int64) (err error) {
-	query := "DELETE FROM article WHERE id = ?"
+func (m *NewsRepository) Delete(ctx context.Context, id int64) (err error) {
+	query := "DELETE FROM news WHERE id = ?"
 
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {
@@ -159,8 +159,8 @@ func (m *ArticleRepository) Delete(ctx context.Context, id int64) (err error) {
 
 	return
 }
-func (m *ArticleRepository) Update(ctx context.Context, ar *domain.Article) (err error) {
-	query := `UPDATE article set title=?, content=?, author_id=?, updated_at=? WHERE ID = ?`
+func (m *NewsRepository) Update(ctx context.Context, ar *domain.News) (err error) {
+	query := `UPDATE news set title=?, content=?, author_id=?, updated_at=? WHERE ID = ?`
 
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {

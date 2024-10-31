@@ -13,34 +13,34 @@ import (
 	articleMysqlRepo "github.com/bxcodec/go-clean-arch/internal/repository/mysql"
 )
 
-func TestFetchArticle(t *testing.T) {
+func TestFetchNews(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	mockArticles := []domain.Article{
+	mockNews := []domain.News{
 		{
 			ID: 1, Title: "title 1", Content: "content 1",
-			Author: domain.Author{ID: 1}, UpdatedAt: time.Now(), CreatedAt: time.Now(),
+			Author: domain.AuthorNews{ID: 1}, UpdatedAt: time.Now(), CreatedAt: time.Now(),
 		},
 		{
 			ID: 2, Title: "title 2", Content: "content 2",
-			Author: domain.Author{ID: 1}, UpdatedAt: time.Now(), CreatedAt: time.Now(),
+			Author: domain.AuthorNews{ID: 1}, UpdatedAt: time.Now(), CreatedAt: time.Now(),
 		},
 	}
 
 	rows := sqlmock.NewRows([]string{"id", "title", "content", "author_id", "updated_at", "created_at"}).
-		AddRow(mockArticles[0].ID, mockArticles[0].Title, mockArticles[0].Content,
-			mockArticles[0].Author.ID, mockArticles[0].UpdatedAt, mockArticles[0].CreatedAt).
-		AddRow(mockArticles[1].ID, mockArticles[1].Title, mockArticles[1].Content,
-			mockArticles[1].Author.ID, mockArticles[1].UpdatedAt, mockArticles[1].CreatedAt)
+		AddRow(mockNews[0].ID, mockNews[0].Title, mockNews[0].Content,
+			mockNews[0].Author.ID, mockNews[0].UpdatedAt, mockNews[0].CreatedAt).
+		AddRow(mockNews[1].ID, mockNews[1].Title, mockNews[1].Content,
+			mockNews[1].Author.ID, mockNews[1].UpdatedAt, mockNews[1].CreatedAt)
 
-	query := "SELECT id,title,content, author_id, updated_at, created_at FROM article WHERE created_at > \\? ORDER BY created_at LIMIT \\?"
+	query := "SELECT id,title,content, author_id, updated_at, created_at FROM news WHERE created_at > \\? ORDER BY created_at LIMIT \\?"
 
 	mock.ExpectQuery(query).WillReturnRows(rows)
-	a := articleMysqlRepo.NewArticleRepository(db)
-	cursor := repository.EncodeCursor(mockArticles[1].CreatedAt)
+	a := articleMysqlRepo.NewNewsRepository(db)
+	cursor := repository.EncodeCursor(mockNews[1].CreatedAt)
 	num := int64(2)
 	list, nextCursor, err := a.Fetch(context.TODO(), cursor, num)
 	assert.NotEmpty(t, nextCursor)
@@ -48,7 +48,7 @@ func TestFetchArticle(t *testing.T) {
 	assert.Len(t, list, 2)
 }
 
-func TestGetArticleByID(t *testing.T) {
+func TestGetNewsByID(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -57,25 +57,25 @@ func TestGetArticleByID(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id", "title", "content", "author_id", "updated_at", "created_at"}).
 		AddRow(1, "title 1", "Content 1", 1, time.Now(), time.Now())
 
-	query := "SELECT id,title,content, author_id, updated_at, created_at FROM article WHERE ID = \\?"
+	query := "SELECT id,title,content, author_id, updated_at, created_at FROM news WHERE ID = \\?"
 
 	mock.ExpectQuery(query).WillReturnRows(rows)
-	a := articleMysqlRepo.NewArticleRepository(db)
+	a := articleMysqlRepo.NewNewsRepository(db)
 
 	num := int64(5)
-	anArticle, err := a.GetByID(context.TODO(), num)
+	anNews, err := a.GetByID(context.TODO(), num)
 	assert.NoError(t, err)
-	assert.NotNil(t, anArticle)
+	assert.NotNil(t, anNews)
 }
 
-func TestStoreArticle(t *testing.T) {
+func TestStoreNews(t *testing.T) {
 	now := time.Now()
-	ar := &domain.Article{
+	ar := &domain.News{
 		Title:     "Judul",
 		Content:   "Content",
 		CreatedAt: now,
 		UpdatedAt: now,
-		Author: domain.Author{
+		Author: domain.AuthorNews{
 			ID:   1,
 			Name: "Iman Tumorang",
 		},
@@ -85,18 +85,18 @@ func TestStoreArticle(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	query := "INSERT  article SET title=\\? , content=\\? , author_id=\\?, updated_at=\\? , created_at=\\?"
+	query := "INSERT  news SET title=\\? , content=\\? , author_id=\\?, updated_at=\\? , created_at=\\?"
 	prep := mock.ExpectPrepare(query)
 	prep.ExpectExec().WithArgs(ar.Title, ar.Content, ar.Author.ID, ar.CreatedAt, ar.UpdatedAt).WillReturnResult(sqlmock.NewResult(12, 1))
 
-	a := articleMysqlRepo.NewArticleRepository(db)
+	a := articleMysqlRepo.NewNewsRepository(db)
 
 	err = a.Store(context.TODO(), ar)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(12), ar.ID)
 }
 
-func TestGetArticleByTitle(t *testing.T) {
+func TestGetNewsByTitle(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -105,44 +105,44 @@ func TestGetArticleByTitle(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id", "title", "content", "author_id", "updated_at", "created_at"}).
 		AddRow(1, "title 1", "Content 1", 1, time.Now(), time.Now())
 
-	query := "SELECT id,title,content, author_id, updated_at, created_at FROM article WHERE title = \\?"
+	query := "SELECT id,title,content, author_id, updated_at, created_at FROM news WHERE title = \\?"
 
 	mock.ExpectQuery(query).WillReturnRows(rows)
-	a := articleMysqlRepo.NewArticleRepository(db)
+	a := articleMysqlRepo.NewNewsRepository(db)
 
 	title := "title 1"
-	anArticle, err := a.GetByTitle(context.TODO(), title)
+	anNews, err := a.GetByTitle(context.TODO(), title)
 	assert.NoError(t, err)
-	assert.NotNil(t, anArticle)
+	assert.NotNil(t, anNews)
 }
 
-func TestDeleteArticle(t *testing.T) {
+func TestDeleteNews(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	query := "DELETE FROM article WHERE id = \\?"
+	query := "DELETE FROM news WHERE id = \\?"
 
 	prep := mock.ExpectPrepare(query)
 	prep.ExpectExec().WithArgs(12).WillReturnResult(sqlmock.NewResult(12, 1))
 
-	a := articleMysqlRepo.NewArticleRepository(db)
+	a := articleMysqlRepo.NewNewsRepository(db)
 
 	num := int64(12)
 	err = a.Delete(context.TODO(), num)
 	assert.NoError(t, err)
 }
 
-func TestUpdateArticle(t *testing.T) {
+func TestUpdateNews(t *testing.T) {
 	now := time.Now()
-	ar := &domain.Article{
+	ar := &domain.News{
 		ID:        12,
 		Title:     "Judul",
 		Content:   "Content",
 		CreatedAt: now,
 		UpdatedAt: now,
-		Author: domain.Author{
+		Author: domain.AuthorNews{
 			ID:   1,
 			Name: "Iman Tumorang",
 		},
@@ -153,12 +153,12 @@ func TestUpdateArticle(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	query := "UPDATE article set title=\\?, content=\\?, author_id=\\?, updated_at=\\? WHERE ID = \\?"
+	query := "UPDATE news set title=\\?, content=\\?, author_id=\\?, updated_at=\\? WHERE ID = \\?"
 
 	prep := mock.ExpectPrepare(query)
 	prep.ExpectExec().WithArgs(ar.Title, ar.Content, ar.Author.ID, ar.UpdatedAt, ar.ID).WillReturnResult(sqlmock.NewResult(12, 1))
 
-	a := articleMysqlRepo.NewArticleRepository(db)
+	a := articleMysqlRepo.NewNewsRepository(db)
 
 	err = a.Update(context.TODO(), ar)
 	assert.NoError(t, err)

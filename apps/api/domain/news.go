@@ -6,18 +6,18 @@ import (
 )
 
 // Status defines the possible statuses for News
-type Status string
+type NewsStatus string
 
 const (
-	StatusDraft     Status = "draft"
-	StatusPublished Status = "published"
-	StatusArchived  Status = "archived" // it's deleted in requirement
+	Draft     NewsStatus = "draft"
+	Deleted   NewsStatus = "deleted"
+	Published NewsStatus = "published"
 )
 
 // Validate validates if the status is one of the predefined values
-func (s Status) Validate() error {
+func (s NewsStatus) Validate() error {
 	switch s {
-	case StatusDraft, StatusPublished, StatusArchived:
+	case Draft, Published, Deleted:
 		return nil
 	default:
 		return errors.New("invalid status value")
@@ -26,12 +26,25 @@ func (s Status) Validate() error {
 
 // News is representing the News data struct
 type News struct {
-	ID        int64      `json:"id"`
-	Title     string     `json:"title" validate:"required"`
-	Content   string     `json:"content" validate:"required"`
-	Author    AuthorNews `json:"author"` // just a little improvisation :)
-	Status    Status     `json:"status"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	CreatedAt time.Time  `json:"created_at"`
-	Topics    []TopicNews
+	ID        int64       `json:"id"`
+	Title     string      `json:"title"`
+	Content   string      `json:"content"`
+	Author    AuthorNews  `json:"author"` // just a little improvisation :)
+	Status    NewsStatus  `json:"status"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	CreatedAt time.Time   `json:"created_at"`
+	Topics    []TopicNews `json:"topics"`
+}
+
+type NewsFilter struct {
+	ID        int64     `json:"id"`
+	Title     string    `json:"title"`
+	Status    string    `json:"status"`
+	AuthorID  int64     `json:"author_id"`
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
+	Limit     int64     `json:"limit"`
+	Page      int64     `json:"page"`
+	SortBy    string    `json:"sort_by"`    // e.g., "created_at"
+	SortOrder string    `json:"sort_order"` // e.g., "asc" or "desc"
 }

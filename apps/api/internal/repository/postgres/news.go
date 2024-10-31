@@ -3,12 +3,13 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-
-	"github.com/sirupsen/logrus"
+	"github.com/bxcodec/go-clean-arch/internal/dto/news"
+	"time"
 
 	"github.com/bxcodec/go-clean-arch/domain"
-	"github.com/bxcodec/go-clean-arch/internal/repository"
+	"github.com/sirupsen/logrus"
 )
 
 type NewsRepository struct {
@@ -20,8 +21,8 @@ func NewNewsRepository(conn *sql.DB) *NewsRepository {
 	return &NewsRepository{conn}
 }
 
-func (m *NewsRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.News, err error) {
-	rows, err := m.Conn.QueryContext(ctx, query, args...)
+func (nr *NewsRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.News, err error) {
+	rows, err := nr.Conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.Error(err)
 		return nil, err
@@ -54,31 +55,90 @@ func (m *NewsRepository) fetch(ctx context.Context, query string, args ...interf
 	return result, nil
 }
 
-func (m *NewsRepository) Fetch(ctx context.Context, cursor string, num int64) (res []domain.News, nextCursor string, err error) {
+func (nr *NewsRepository) Fetch(ctx context.Context, filter domain.NewsFilter) (res []domain.News, totalData int64, err error) {
 	query := `SELECT id, title, content, author_id, status, updated_at, created_at
-			  FROM news WHERE created_at > $1 ORDER BY created_at LIMIT $2`
+			  FROM news WHERE 1=1`
+	countQuery := "SELECT COUNT(*) FROM news WHERE 1=1"
 
-	decodedCursor, err := repository.DecodeCursor(cursor)
-	if err != nil && cursor != "" {
-		return nil, "", domain.ErrBadParamInput
+	var args []interface{}
+	argIndex := 1 // Start index for query parameters
+
+	// Add conditions based on optional filters
+	if filter.ID != 0 {
+		query += fmt.Sprintf(" AND id = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND id = $%d", argIndex)
+		args = append(args, filter.ID)
+		argIndex++
+	}
+	if filter.Title != "" {
+		query += fmt.Sprintf(" AND title ILIKE $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND title ILIKE $%d", argIndex)
+		args = append(args, fmt.Sprintf("%%%s%%", filter.Title)) // Add wildcards
+		argIndex++
+	}
+	if filter.Status != "" {
+		query += fmt.Sprintf(" AND status = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND status = $%d", argIndex)
+		args = append(args, filter.Status)
+		argIndex++
+	}
+	if filter.AuthorID != 0 {
+		query += fmt.Sprintf(" AND author_id = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND author_id = $%d", argIndex)
+		args = append(args, filter.AuthorID)
+		argIndex++
+	}
+	var zeroTime time.Time
+	if filter.StartDate != zeroTime {
+		query += fmt.Sprintf(" AND created_at >= $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND created_at >= $%d", argIndex)
+		args = append(args, filter.StartDate)
+		argIndex++
+	}
+	if filter.EndDate != zeroTime {
+		query += fmt.Sprintf(" AND created_at <= $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND created_at <= $%d", argIndex)
+		args = append(args, filter.EndDate)
+		argIndex++
 	}
 
-	res, err = m.fetch(ctx, query, decodedCursor, num)
+	// Execute the count query
+	err = nr.Conn.QueryRowContext(ctx, countQuery, args...).Scan(&totalData)
 	if err != nil {
-		return nil, "", err
+		return nil, 0, err
 	}
 
-	if len(res) == int(num) {
-		nextCursor = repository.EncodeCursor(res[len(res)-1].CreatedAt)
+	// Sorting logic
+	if filter.SortBy != "" {
+		orderDirection := "ASC" // default to ascending
+		if filter.SortOrder == "desc" {
+			orderDirection = "DESC"
+		}
+		query += fmt.Sprintf(" ORDER BY %s %s", filter.SortBy, orderDirection)
 	}
-	return
+
+	// Pagination logic
+	if filter.Page < 1 {
+		filter.Page = 1
+	}
+	offset := (filter.Page - 1) * filter.Limit
+	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, filter.Limit, offset)
+
+	// Execute the main query with pagination
+	res, err = nr.fetch(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return res, totalData, nil
 }
 
-func (m *NewsRepository) GetByID(ctx context.Context, id int64) (res domain.News, err error) {
-	query := `SELECT id, title, content, author_id, updated_at, created_at
+func (nr *NewsRepository) GetByID(ctx context.Context, id int64) (res domain.News, err error) {
+	query := `SELECT id, title, content, author_id, status, updated_at, created_at
 			  FROM news WHERE id = $1`
 
-	list, err := m.fetch(ctx, query, id)
+	list, err := nr.fetch(ctx, query, id)
 	if err != nil {
 		return domain.News{}, err
 	}
@@ -92,11 +152,11 @@ func (m *NewsRepository) GetByID(ctx context.Context, id int64) (res domain.News
 	return
 }
 
-func (m *NewsRepository) GetByTitle(ctx context.Context, title string) (res domain.News, err error) {
+func (nr *NewsRepository) GetByTitle(ctx context.Context, title string) (res domain.News, err error) {
 	query := `SELECT id, title, content, author_id, updated_at, created_at
 			  FROM news WHERE title = $1`
 
-	list, err := m.fetch(ctx, query, title)
+	list, err := nr.fetch(ctx, query, title)
 	if err != nil {
 		return
 	}
@@ -109,17 +169,17 @@ func (m *NewsRepository) GetByTitle(ctx context.Context, title string) (res doma
 	return
 }
 
-func (m *NewsRepository) Store(ctx context.Context, a *domain.News) (err error) {
-	query := `INSERT INTO news (title, content, author_id, updated_at, created_at)
-			  VALUES ($1, $2, $3, $4, $5) RETURNING id`
-	err = m.Conn.QueryRowContext(ctx, query, a.Title, a.Content, a.Author.ID, a.UpdatedAt, a.CreatedAt).Scan(&a.ID)
+func (nr *NewsRepository) Store(ctx context.Context, n *news.CreateNewsReq) (err error) {
+	query := `INSERT INTO news (title, content, author_id, status, updated_at, created_at)
+			  VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	err = nr.Conn.QueryRowContext(ctx, query, n.Title, n.Content, n.AuthorID, n.Status, time.Now(), time.Now()).Scan(&n.ID)
 	return
 }
 
-func (m *NewsRepository) Delete(ctx context.Context, id int64) (err error) {
+func (nr *NewsRepository) Delete(ctx context.Context, id int64) (err error) {
 	query := "DELETE FROM news WHERE id = $1"
 
-	stmt, err := m.Conn.PrepareContext(ctx, query)
+	stmt, err := nr.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return
 	}
@@ -142,26 +202,73 @@ func (m *NewsRepository) Delete(ctx context.Context, id int64) (err error) {
 	return
 }
 
-func (m *NewsRepository) Update(ctx context.Context, ar *domain.News) (err error) {
-	query := `UPDATE news SET title=$1, content=$2, author_id=$3, updated_at=$4 WHERE id = $5`
-
-	stmt, err := m.Conn.PrepareContext(ctx, query)
-	if err != nil {
-		return
+func (nr *NewsRepository) Update(ctx context.Context, cnr *news.UpdateNewsReq) (err error) {
+	// Ensure cnr.ID is provided
+	if cnr.ID == nil {
+		return errors.New("news ID is required for update")
 	}
 
-	res, err := stmt.ExecContext(ctx, ar.Title, ar.Content, ar.Author.ID, ar.UpdatedAt, ar.ID)
-	if err != nil {
-		return
+	// Initialize the base query and an args slice
+	query := `UPDATE news SET `
+	var args []interface{}
+	argIndex := 1
+
+	// Dynamically build the update query based on which fields are set
+	if cnr.Title != nil {
+		query += fmt.Sprintf("title = $%d, ", argIndex)
+		args = append(args, *cnr.Title)
+		argIndex++
 	}
+	if cnr.Content != nil {
+		query += fmt.Sprintf("content = $%d, ", argIndex)
+		args = append(args, *cnr.Content)
+		argIndex++
+	}
+	if cnr.AuthorID != nil {
+		query += fmt.Sprintf("author_id = $%d, ", argIndex)
+		args = append(args, *cnr.AuthorID)
+		argIndex++
+	}
+	if cnr.Status != nil {
+		query += fmt.Sprintf("status = $%d, ", argIndex)
+		args = append(args, *cnr.Status)
+		argIndex++
+	}
+
+	// Always update the updated_at timestamp
+	query += fmt.Sprintf("updated_at = $%d ", argIndex)
+	args = append(args, time.Now())
+	argIndex++
+
+	// Complete the WHERE clause
+	query += fmt.Sprintf("WHERE id = $%d", argIndex)
+	args = append(args, *cnr.ID)
+
+	// Prepare and execute the query
+	stmt, err := nr.Conn.PrepareContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare query: %w", err)
+	}
+	defer func(stmt *sql.Stmt) {
+		err := stmt.Close()
+		if err != nil {
+			return
+		}
+	}(stmt) // Ensure statement is closed after execution
+
+	res, err := stmt.ExecContext(ctx, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
 	affected, err := res.RowsAffected()
 	if err != nil {
-		return
+		return fmt.Errorf("failed to get affected rows: %w", err)
 	}
 	if affected != 1 {
 		err = fmt.Errorf("unexpected behavior: total affected rows = %d", affected)
 		return
 	}
 
-	return
+	return nil
 }

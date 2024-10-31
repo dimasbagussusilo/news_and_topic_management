@@ -21,23 +21,23 @@ CREATE TABLE news
 
 -- Inserting realistic data for table `news`
 INSERT INTO news (id, title, content, author_id, status, updated_at, created_at)
-VALUES (1, 'Health Benefits of a Mediterranean Diet',
-        '<p>The Mediterranean diet has been associated with various health benefits...</p>',
+VALUES (1, 'Health Benefits of cnr Mediterranean Diet',
+        'The Mediterranean diet has been associated with various health benefits...',
         1, 'published', '2024-10-28 09:15:00', '2024-10-28 09:00:00'),
        (2, 'AI and the Future of Work',
-        '<p>Artificial Intelligence is transforming the workplace by automating tasks...</p>',
+        'Artificial Intelligence is transforming the workplace by automating tasks...',
         2, 'published', '2024-10-27 14:30:00', '2024-10-27 14:00:00'),
        (3, '10 Best Travel Destinations for 2024',
-        '<p>Looking to plan your 2024 vacation? Here are ten must-visit destinations...</p>',
+        'Looking to plan your 2024 vacation? Here are ten must-visit destinations...',
         3, 'draft', '2024-10-26 11:20:00', '2024-10-26 11:00:00'),
        (4, 'Climate Change: What You Can Do to Help',
-        '<p>As global temperatures continue to rise, individuals have the power to make a difference...</p>',
-        4, 'published', '2024-10-25 08:10:00', '2024-10-25 08:00:00'),
+        'As global temperatures continue to rise, individuals have the power to make cnr difference...',
+        4, 'deleted', '2024-10-25 08:10:00', '2024-10-25 08:00:00'),
        (5, '5 Tips for Boosting Your Mental Health',
-        '<p>Prioritizing mental health is essential. Here are five tips to improve your well-being...</p>',
-        1, 'archived', '2024-10-24 13:45:00', '2024-10-24 13:00:00'),
+        'Prioritizing mental health is essential. Here are five tips to improve your well-being...',
+        1, 'draft', '2024-10-24 13:45:00', '2024-10-24 13:00:00'),
        (6, 'Advancements in Renewable Energy Technologies',
-        '<p>Renewable energy sources such as solar and wind are becoming more efficient and accessible...</p>',
+        'Renewable energy sources such as solar and wind are becoming more efficient and accessible...',
         2, 'published', '2024-10-23 10:30:00', '2024-10-23 10:00:00');
 
 -- Table structure for table `topic`

@@ -1,4 +1,4 @@
-package mysql_test
+package postgres_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 
-	repository "github.com/bxcodec/go-clean-arch/internal/repository/mysql"
+	repository "github.com/bxcodec/go-clean-arch/internal/repository/postgres"
 )
 
 func TestGetAuthorByID(t *testing.T) {

@@ -1,0 +1,846 @@
+{
+	"info": {
+		"_postman_id": "d4c75152-7022-43a9-a148-b5ff44a8b435",
+		"name": "News Topic Management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "11097539"
+	},
+	"item": [
+		{
+			"name": "News",
+			"item": [
+				{
+					"name": "Get All",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/news?limit=10&page=1&sort_by=created_at&sort_order=desc",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"news"
+							],
+							"query": [
+								{
+									"key": "title",
+									"value": "heal",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "draft",
+									"description": "\"publish\"  or \"draft\" or \"deleted\"",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "start_date",
+									"value": "2024-10-26T11:00:00Z",
+									"disabled": true
+								},
+								{
+									"key": "sort_by",
+									"value": "created_at"
+								},
+								{
+									"key": "sort_order",
+									"value": "desc",
+									"description": "\"asc\" or \"desc\""
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Get All",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BASE_URL}}/news?title=heal&limit=3&page=1&start_date=2024-10-26T11:00:00Z&sort_by=created_at&sort_order=desc",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"news"
+									],
+									"query": [
+										{
+											"key": "title",
+											"value": "heal"
+										},
+										{
+											"key": "status",
+											"value": "draft",
+											"description": "\"publish\"  or \"draft\" or \"deleted\"",
+											"disabled": true
+										},
+										{
+											"key": "limit",
+											"value": "3"
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "start_date",
+											"value": "2024-10-26T11:00:00Z"
+										},
+										{
+											"key": "sort_by",
+											"value": "created_at"
+										},
+										{
+											"key": "sort_order",
+											"value": "desc",
+											"description": "\"asc\" or \"desc\""
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 31 Oct 2024 14:54:41 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "432"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"title\": \"Health Benefits of a Mediterranean Diet\",\n            \"content\": \"<p>The Mediterranean diet has been associated with various health benefits...</p>\",\n            \"author\": {\n                \"id\": 1,\n                \"name\": \"Doni\"\n            },\n            \"status\": \"published\",\n            \"updated_at\": \"2024-10-28T09:15:00Z\",\n            \"created_at\": \"2024-10-28T09:00:00Z\",\n            \"Topics\": [\n                {\n                    \"id\": 1,\n                    \"name\": \"Health\"\n                },\n                {\n                    \"id\": 4,\n                    \"name\": \"Environment\"\n                }\n            ]\n        }\n    ],\n    \"meta\": {\n        \"current_page\": 1,\n        \"total_pages\": 1,\n        \"total_data\": 1\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get One",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/news/1",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"news",
+								"1"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "One",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BASE_URL}}/news/1",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"news",
+										"1"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 31 Oct 2024 15:22:43 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "364"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"id\": 1,\n    \"title\": \"Health Benefits of a Mediterranean Diet\",\n    \"content\": \"<p>The Mediterranean diet has been associated with various health benefits...</p>\",\n    \"author\": {\n        \"id\": 1,\n        \"name\": \"Doni\"\n    },\n    \"status\": \"published\",\n    \"updated_at\": \"2024-10-28T09:15:00Z\",\n    \"created_at\": \"2024-10-28T09:00:00Z\",\n    \"Topics\": [\n        {\n            \"id\": 1,\n            \"name\": \"Health\"\n        },\n        {\n            \"id\": 4,\n            \"name\": \"Environment\"\n        }\n    ]\n}"
+						}
+					]
+				},
+				{
+					"name": "Create",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Covid 19 is gone!\",\n    \"content\": \"Alhamdulillah the covid 19 pandemic is over, we can continue our activities without fear of catching a virus\",\n    \"author_id\": 1,\n    \"status\": \"test\",\n    \"topic_ids\": [\n        1,\n        5\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/news",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"news"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Create",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Covid 19 is gone!\",\n    \"content\": \"Alhamdulillah the covid 19 pandemic is over, we can continue our activities without fear of catching a virus\",\n    \"author_id\": 1,\n    \"status\": \"test\",\n    \"topic_ids\": [\n        1,\n        5\n    ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BASE_URL}}/news",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"news"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 31 Oct 2024 16:27:36 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "34"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"success create news\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Update",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"test\",\n    \"topic_ids\": [\n        1,\n        3\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/news/4",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"news",
+								"4"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Update",
+							"originalRequest": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"test\",\n    \"topic_ids\": [\n        1,\n        3\n    ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BASE_URL}}/news/4",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"news",
+										"4"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 31 Oct 2024 17:20:22 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "34"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"success update news\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Delete",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/news/6",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"news",
+								"6"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Delete",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{BASE_URL}}/news/6",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"news",
+										"6"
+									]
+								}
+							},
+							"status": "No Content",
+							"code": 204,
+							"_postman_previewlanguage": "plain",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 31 Oct 2024 16:40:08 GMT"
+								}
+							],
+							"cookie": [],
+							"body": null
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Topic",
+			"item": [
+				{
+					"name": "Get All",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/topic?limit=10&page=1&sort_by=created_at&sort_order=desc",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"topic"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "sort_by",
+									"value": "created_at"
+								},
+								{
+									"key": "sort_order",
+									"value": "desc"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Get All",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BASE_URL}}/topic?limit=10&page=1&sort_by=created_at&sort_order=desc",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"topic"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "sort_by",
+											"value": "created_at"
+										},
+										{
+											"key": "sort_order",
+											"value": "desc"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Fri, 01 Nov 2024 04:04:03 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "639"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"Health\",\n            \"created_at\": \"2024-11-01T03:14:25.837218Z\",\n            \"updated_at\": \"2024-11-01T03:14:25.837218Z\"\n        },\n        {\n            \"id\": 2,\n            \"name\": \"Technology\",\n            \"created_at\": \"2024-11-01T03:14:25.837218Z\",\n            \"updated_at\": \"2024-11-01T03:14:25.837218Z\"\n        },\n        {\n            \"id\": 3,\n            \"name\": \"Travel\",\n            \"created_at\": \"2024-11-01T03:14:25.837218Z\",\n            \"updated_at\": \"2024-11-01T03:14:25.837218Z\"\n        },\n        {\n            \"id\": 4,\n            \"name\": \"Environment\",\n            \"created_at\": \"2024-11-01T03:14:25.837218Z\",\n            \"updated_at\": \"2024-11-01T03:14:25.837218Z\"\n        },\n        {\n            \"id\": 5,\n            \"name\": \"Mental Health\",\n            \"created_at\": \"2024-11-01T03:14:25.837218Z\",\n            \"updated_at\": \"2024-11-01T03:14:25.837218Z\"\n        }\n    ],\n    \"meta\": {\n        \"current_page\": 1,\n        \"total_pages\": 1,\n        \"total_data\": 5\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get One",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/topic/1",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"topic",
+								"1"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Get One",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BASE_URL}}/topic/1",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"topic",
+										"1"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Fri, 01 Nov 2024 04:04:25 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "111"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"id\": 1,\n    \"name\": \"Health\",\n    \"created_at\": \"2024-11-01T03:14:25.837218Z\",\n    \"updated_at\": \"2024-11-01T03:14:25.837218Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Create",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Religion\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/topic",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"topic"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Create",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Religion\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BASE_URL}}/topic",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"topic"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Fri, 01 Nov 2024 04:06:17 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "35"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"success create topic\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Update",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Beauty\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/topic/7",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"topic",
+								"7"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Update",
+							"originalRequest": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Beauty\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BASE_URL}}/topic/7",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"topic",
+										"7"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Date",
+									"value": "Fri, 01 Nov 2024 04:08:50 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "35"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"success update topic\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Delete",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/topic/6",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"topic",
+								"6"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Delete",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{BASE_URL}}/topic/6",
+									"host": [
+										"{{BASE_URL}}"
+									],
+									"path": [
+										"topic",
+										"6"
+									]
+								}
+							},
+							"status": "No Content",
+							"code": 204,
+							"_postman_previewlanguage": "plain",
+							"header": [
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Date",
+									"value": "Fri, 01 Nov 2024 04:06:44 GMT"
+								}
+							],
+							"cookie": [],
+							"body": null
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/health",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Health Check",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/health",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=UTF-8"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 31 Oct 2024 17:20:44 GMT"
+						},
+						{
+							"key": "Content-Length",
+							"value": "16"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": \"ok\"\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:9090",
+			"type": "string"
+		}
+	]
+}

@@ -153,8 +153,14 @@ Your project includes a test suite to ensure functionality. To run the tests, us
 
 Make sure that your testing framework is correctly set up in the project. You can add new tests by creating files in the `tests` directory.
 
+Diagram Project
+-------
+![project diagram](https://raw.githubusercontent.com/dimasbagussusilo/news_and_topic_management/refs/heads/main/mermaid-diagran.png)
+![golang clean architecture](https://github.com/bxcodec/go-clean-arch/raw/master/clean-arch.png)
 
-
+Database Schema
+-------
+![db diagram](https://raw.githubusercontent.com/dimasbagussusilo/news_and_topic_management/refs/heads/main/db-diagram.png)
 
 License
 -------

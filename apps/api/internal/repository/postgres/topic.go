@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
 	"github.com/sirupsen/logrus"
+	"time"
 
 	"github.com/bxcodec/go-clean-arch/domain"
-	"github.com/bxcodec/go-clean-arch/internal/repository"
 )
 
 type TopicRepository struct {
@@ -20,8 +19,8 @@ func NewTopicRepository(conn *sql.DB) *TopicRepository {
 	return &TopicRepository{conn}
 }
 
-func (m *TopicRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.Topic, err error) {
-	rows, err := m.Conn.QueryContext(ctx, query, args...)
+func (tr *TopicRepository) fetch(ctx context.Context, query string, args ...interface{}) (result []domain.Topic, err error) {
+	rows, err := tr.Conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		logrus.Error(err)
 		return nil, err
@@ -51,31 +50,65 @@ func (m *TopicRepository) fetch(ctx context.Context, query string, args ...inter
 	return result, nil
 }
 
-func (m *TopicRepository) Fetch(ctx context.Context, cursor string, num int64) (res []domain.Topic, nextCursor string, err error) {
+func (tr *TopicRepository) Fetch(ctx context.Context, filter domain.TopicFilter) (res []domain.Topic, totalData int64, err error) {
 	query := `SELECT id, name, updated_at, created_at
-			  FROM topic WHERE created_at > $1 ORDER BY created_at LIMIT $2`
+			  FROM topic WHERE 1=1`
+	countQuery := "SELECT COUNT(*) FROM topic WHERE 1=1"
 
-	decodedCursor, err := repository.DecodeCursor(cursor)
-	if err != nil && cursor != "" {
-		return nil, "", domain.ErrBadParamInput
+	var args []interface{}
+	argIndex := 1 // Start index for query parameters
+
+	// Add conditions based on optional filters
+	if filter.ID != 0 {
+		query += fmt.Sprintf(" AND id = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND id = $%d", argIndex)
+		args = append(args, filter.ID)
+		argIndex++
+	}
+	if filter.Name != "" {
+		query += fmt.Sprintf(" AND name ILIKE $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND name ILIKE $%d", argIndex)
+		args = append(args, fmt.Sprintf("%%%s%%", filter.Name)) // Add wildcards
+		argIndex++
 	}
 
-	res, err = m.fetch(ctx, query, decodedCursor, num)
+	// Execute the count query
+	err = tr.Conn.QueryRowContext(ctx, countQuery, args...).Scan(&totalData)
 	if err != nil {
-		return nil, "", err
+		return nil, 0, err
 	}
 
-	if len(res) == int(num) {
-		nextCursor = repository.EncodeCursor(res[len(res)-1].CreatedAt)
+	// Sorting logic
+	if filter.SortBy != "" {
+		orderDirection := "ASC" // default to ascending
+		if filter.SortOrder == "desc" {
+			orderDirection = "DESC"
+		}
+		query += fmt.Sprintf(" ORDER BY %s %s", filter.SortBy, orderDirection)
 	}
-	return
+
+	// Pagination logic
+	if filter.Page < 1 {
+		filter.Page = 1
+	}
+	offset := (filter.Page - 1) * filter.Limit
+	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, filter.Limit, offset)
+
+	// Execute the main query with pagination
+	res, err = tr.fetch(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return res, totalData, nil
 }
 
-func (m *TopicRepository) GetByID(ctx context.Context, id int64) (res domain.Topic, err error) {
+func (tr *TopicRepository) GetByID(ctx context.Context, id int64) (res domain.Topic, err error) {
 	query := `SELECT id, name, updated_at, created_at
 			  FROM topic WHERE id = $1`
 
-	list, err := m.fetch(ctx, query, id)
+	list, err := tr.fetch(ctx, query, id)
 	if err != nil {
 		return domain.Topic{}, err
 	}
@@ -89,11 +122,11 @@ func (m *TopicRepository) GetByID(ctx context.Context, id int64) (res domain.Top
 	return
 }
 
-func (m *TopicRepository) GetByNewsID(ctx context.Context, id int64) (res domain.Topic, err error) {
+func (tr *TopicRepository) GetByNewsID(ctx context.Context, id int64) (res domain.Topic, err error) {
 	query := `SELECT id, title, content, author_id, updated_at, created_at
 			  FROM topic WHERE id = $1`
 
-	list, err := m.fetch(ctx, query, id)
+	list, err := tr.fetch(ctx, query, id)
 	if err != nil {
 		return domain.Topic{}, err
 	}
@@ -107,17 +140,35 @@ func (m *TopicRepository) GetByNewsID(ctx context.Context, id int64) (res domain
 	return
 }
 
-func (m *TopicRepository) Store(ctx context.Context, a *domain.Topic) (err error) {
-	query := `INSERT INTO topic (name, updated_at, created_at)
-			  VALUES ($1, $2, $3) RETURNING id`
-	err = m.Conn.QueryRowContext(ctx, query, a.Name, a.UpdatedAt, a.CreatedAt).Scan(&a.ID)
+func (tr *TopicRepository) GetByName(ctx context.Context, name string) (res domain.Topic, err error) {
+	query := `SELECT id, name, updated_at, created_at
+			  FROM topic WHERE name = $1`
+
+	list, err := tr.fetch(ctx, query, name)
+	if err != nil {
+		return domain.Topic{}, err
+	}
+
+	if len(list) > 0 {
+		res = list[0]
+	} else {
+		return res, domain.ErrNotFound
+	}
+
 	return
 }
 
-func (m *TopicRepository) Delete(ctx context.Context, id int64) (err error) {
+func (tr *TopicRepository) Store(ctx context.Context, a *domain.Topic) (err error) {
+	query := `INSERT INTO topic (name, updated_at, created_at)
+			  VALUES ($1, $2, $3) RETURNING id`
+	err = tr.Conn.QueryRowContext(ctx, query, a.Name, time.Now(), time.Now()).Scan(&a.ID)
+	return
+}
+
+func (tr *TopicRepository) Delete(ctx context.Context, id int64) (err error) {
 	query := "DELETE FROM topic WHERE id = $1"
 
-	stmt, err := m.Conn.PrepareContext(ctx, query)
+	stmt, err := tr.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return
 	}
@@ -140,10 +191,10 @@ func (m *TopicRepository) Delete(ctx context.Context, id int64) (err error) {
 	return
 }
 
-func (m *TopicRepository) Update(ctx context.Context, to *domain.Topic) (err error) {
+func (tr *TopicRepository) Update(ctx context.Context, to *domain.Topic) (err error) {
 	query := `UPDATE topic SET name=$1, updated_at=$2 WHERE id = $3`
 
-	stmt, err := m.Conn.PrepareContext(ctx, query)
+	stmt, err := tr.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return
 	}

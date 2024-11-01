@@ -3,49 +3,44 @@ package rest
 import (
 	"context"
 	"github.com/bxcodec/go-clean-arch/internal/dto"
-	"github.com/bxcodec/go-clean-arch/internal/dto/news"
+	"github.com/labstack/echo/v4"
 	"gopkg.in/go-playground/validator.v9"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/bxcodec/go-clean-arch/domain"
-	"github.com/labstack/echo/v4"
 )
 
-// NewsService represent the news's use cases
+// TopicService represent the news's use cases
 //
-//go:generate mockery --name NewsService
-type NewsService interface {
-	Fetch(ctx context.Context, filter domain.NewsFilter) ([]domain.News, int64, error)
-	GetByID(ctx context.Context, id int64) (domain.News, error)
-	Update(ctx context.Context, ar *news.UpdateNewsReq) error
-	GetByTitle(ctx context.Context, title string) (domain.News, error)
-	Store(context.Context, *news.CreateNewsReq) error
+//go:generate mockery --name TopicService
+type TopicService interface {
+	Fetch(ctx context.Context, filter domain.TopicFilter) ([]domain.Topic, int64, error)
+	GetByID(ctx context.Context, id int64) (domain.Topic, error)
+	Update(ctx context.Context, ar *domain.Topic) error
+	GetByTitle(ctx context.Context, title string) (domain.Topic, error)
+	Store(context.Context, *domain.Topic) error
 	Delete(ctx context.Context, id int64) error
 }
 
-// NewsHandler  represent the http handler for news
-type NewsHandler struct {
-	Service NewsService
+// TopicHandler  represent the http handler for news
+type TopicHandler struct {
+	Service TopicService
 }
 
-const defaultLimit = 10
-const defaultPage = 1
-
-// NewNewsHandler will initialize the news/ resources endpoint
-func NewNewsHandler(e *echo.Echo, svc NewsService) {
-	handler := &NewsHandler{
+// NewTopicHandler will initialize the news/ resources endpoint
+func NewTopicHandler(e *echo.Echo, svc TopicService) {
+	handler := &TopicHandler{
 		Service: svc,
 	}
-	e.GET("/news", handler.Fetch)
-	e.POST("/news", handler.Store)
-	e.GET("/news/:id", handler.GetByID)
-	e.PUT("/news/:id", handler.Update)
-	e.DELETE("/news/:id", handler.Delete)
+	e.GET("/topic", handler.Fetch)
+	e.POST("/topic", handler.Store)
+	e.GET("/topic/:id", handler.GetByID)
+	e.PUT("/topic/:id", handler.Update)
+	e.DELETE("/topic/:id", handler.Delete)
 }
 
-func (a *NewsHandler) Fetch(c echo.Context) error {
+func (a *TopicHandler) Fetch(c echo.Context) error {
 	limit, err := strconv.Atoi(c.QueryParam("limit"))
 	if err != nil || limit <= 0 {
 		limit = defaultLimit
@@ -56,16 +51,12 @@ func (a *NewsHandler) Fetch(c echo.Context) error {
 	}
 
 	idStr := c.QueryParam("id")
-	title := c.QueryParam("title")
-	status := c.QueryParam("status")
-	authorIDStr := c.QueryParam("author_id")
-	startDateStr := c.QueryParam("start_date")
-	endDateStr := c.QueryParam("end_date")
+	name := c.QueryParam("name")
 	sortBy := c.QueryParam("sort_by")
 	sortOrder := c.QueryParam("sort_order")
 
-	// Build NewsFilter
-	filter := domain.NewsFilter{
+	// Build TopicFilter
+	filter := domain.TopicFilter{
 		Limit: int64(limit),
 		Page:  int64(page),
 	}
@@ -76,26 +67,8 @@ func (a *NewsHandler) Fetch(c echo.Context) error {
 			filter.ID = id
 		}
 	}
-	if title != "" {
-		filter.Title = title
-	}
-	if status != "" {
-		filter.Status = status
-	}
-	if authorIDStr != "" {
-		if authorID, err := strconv.ParseInt(authorIDStr, 10, 64); err == nil {
-			filter.AuthorID = authorID
-		}
-	}
-	if startDateStr != "" {
-		if startDate, err := time.Parse(time.RFC3339, startDateStr); err == nil {
-			filter.StartDate = startDate
-		}
-	}
-	if endDateStr != "" {
-		if endDate, err := time.Parse(time.RFC3339, endDateStr); err == nil {
-			filter.EndDate = endDate
-		}
+	if name != "" {
+		filter.Name = name
 	}
 	if sortBy != "" {
 		filter.SortBy = sortBy
@@ -128,7 +101,7 @@ func (a *NewsHandler) Fetch(c echo.Context) error {
 }
 
 // GetByID will get news by given id
-func (a *NewsHandler) GetByID(c echo.Context) error {
+func (a *TopicHandler) GetByID(c echo.Context) error {
 	idP, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
@@ -137,7 +110,7 @@ func (a *NewsHandler) GetByID(c echo.Context) error {
 	id := int64(idP)
 	ctx := c.Request().Context()
 
-	listAr, _, err := a.Service.Fetch(ctx, domain.NewsFilter{ID: id, Page: 1, Limit: 1})
+	listAr, _, err := a.Service.Fetch(ctx, domain.TopicFilter{ID: id, Page: 1, Limit: 1})
 	if err != nil {
 		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
 	}
@@ -149,7 +122,7 @@ func (a *NewsHandler) GetByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, listAr[0])
 }
 
-func isRequestValid(m *news.CreateNewsReq) (bool, error) {
+func isRequestTopicValid(m *domain.Topic) (bool, error) {
 	validate := validator.New()
 	err := validate.Struct(m)
 	if err != nil {
@@ -159,28 +132,28 @@ func isRequestValid(m *news.CreateNewsReq) (bool, error) {
 }
 
 // Store will store the news by given request body
-func (a *NewsHandler) Store(c echo.Context) (err error) {
-	var createNewsReq news.CreateNewsReq
-	err = c.Bind(&createNewsReq)
+func (a *TopicHandler) Store(c echo.Context) (err error) {
+	var createTopicReq domain.Topic
+	err = c.Bind(&createTopicReq)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	if _, err = isRequestValid(&createNewsReq); err != nil {
+	if _, err = isRequestTopicValid(&createTopicReq); err != nil {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
 	ctx := c.Request().Context()
-	err = a.Service.Store(ctx, &createNewsReq)
+	err = a.Service.Store(ctx, &createTopicReq)
 	if err != nil {
 		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "success create news"})
+	return c.JSON(http.StatusCreated, map[string]string{"message": "success create topic"})
 }
 
 // Update will update news by given param
-func (a *NewsHandler) Update(c echo.Context) error {
+func (a *TopicHandler) Update(c echo.Context) error {
 	idP, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
@@ -188,26 +161,26 @@ func (a *NewsHandler) Update(c echo.Context) error {
 
 	id := int64(idP)
 
-	updateNewsReq := news.UpdateNewsReq{
-		ID: &id,
+	updateTopicReq := domain.Topic{
+		ID: id,
 	}
-	err = c.Bind(&updateNewsReq)
+	err = c.Bind(&updateTopicReq)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
 	ctx := c.Request().Context()
 
-	err = a.Service.Update(ctx, &updateNewsReq)
+	err = a.Service.Update(ctx, &updateTopicReq)
 	if err != nil {
 		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "success update news"})
+	return c.JSON(http.StatusCreated, map[string]string{"message": "success update topic"})
 }
 
 // Delete will delete news by given param
-func (a *NewsHandler) Delete(c echo.Context) error {
+func (a *TopicHandler) Delete(c echo.Context) error {
 	idP, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())

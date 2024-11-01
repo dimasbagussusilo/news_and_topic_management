@@ -20,6 +20,7 @@ import (
 	"github.com/bxcodec/go-clean-arch/internal/rest"
 	"github.com/bxcodec/go-clean-arch/internal/rest/middleware"
 	"github.com/bxcodec/go-clean-arch/news"
+	"github.com/bxcodec/go-clean-arch/topic"
 	"github.com/joho/godotenv"
 )
 
@@ -99,8 +100,10 @@ func main() {
 	newsTopicRepo := postgresRepo.NewNewsTopicRepository(dbConn) // Use PostgreSQL repo
 
 	// Build service Layer
-	svc := news.NewService(newsRepo, authorRepo, topicRepo, newsTopicRepo)
-	rest.NewNewsHandler(e, svc)
+	ns := news.NewService(newsRepo, authorRepo, topicRepo, newsTopicRepo)
+	ts := topic.NewService(topicRepo)
+	rest.NewNewsHandler(e, ns)
+	rest.NewTopicHandler(e, ts)
 
 	// Start Server
 	address := os.Getenv("SERVER_ADDRESS")

@@ -3,29 +3,23 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/bxcodec/go-clean-arch/topic"
 	"log"
 	"net/http"
-	_ "net/url"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	_ "github.com/lib/pq"
-	//_ "github.com/go-sql-driver/mysql"
-
-	//mysqlRepo "github.com/bxcodec/go-clean-arch/internal/repository/mysql"
 	postgresRepo "github.com/bxcodec/go-clean-arch/internal/repository/postgres" // Update the repository package
-
 	"github.com/bxcodec/go-clean-arch/internal/rest"
 	"github.com/bxcodec/go-clean-arch/internal/rest/middleware"
 	"github.com/bxcodec/go-clean-arch/news"
-	"github.com/bxcodec/go-clean-arch/topic"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 const (
-	defaultTimeout = 30
+	defaultTimeout = 30 * time.Second
 	defaultAddress = ":9090"
 )
 
@@ -37,78 +31,79 @@ func init() {
 }
 
 func main() {
-	// prepare database
+	// Prepare database connection
 	dbHost := os.Getenv("DATABASE_HOST")
 	dbPort := os.Getenv("DATABASE_PORT")
 	dbUser := os.Getenv("DATABASE_USER")
 	dbPass := os.Getenv("DATABASE_PASS")
 	dbName := os.Getenv("DATABASE_NAME")
 
-	//connection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbHost, dbPort, dbName)
-	//val := url.Values{}
-	//val.Add("parseTime", "1")
-	//val.Add("loc", "Asia/Jakarta")
-	//dsn := fmt.Sprintf("%s?%s", connection, val.Encode())
-	//dbConn, err := sql.Open(`mysql`, dsn)
-	//if err != nil {
-	//    log.Fatal("failed to open connection to database", err)
-	//}
-
 	connection := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
 	dbConn, err := sql.Open("postgres", connection)
 	if err != nil {
-		log.Fatal("failed to open connection to database", err)
+		log.Fatal("Failed to open connection to database:", err)
 	}
 
 	err = dbConn.Ping()
 	if err != nil {
-		log.Fatal("failed to ping database ", err)
+		log.Fatal("Failed to ping database:", err)
 	}
 
 	defer func() {
-		err := dbConn.Close()
-		if err != nil {
-			log.Fatal("got error when closing the DB connection", err)
+		if err := dbConn.Close(); err != nil {
+			log.Fatal("Error closing the DB connection:", err)
 		}
 	}()
 
-	// prepare echo
-	e := echo.New()
-	e.Use(middleware.CORS)
+	// Prepare context timeout
 	timeoutStr := os.Getenv("CONTEXT_TIMEOUT")
 	timeout, err := strconv.Atoi(timeoutStr)
 	if err != nil {
-		log.Println("failed to parse timeout, using default timeout")
-		timeout = defaultTimeout
+		log.Println("Failed to parse timeout, using default timeout")
+		timeout = int(defaultTimeout.Seconds())
 	}
 	timeoutContext := time.Duration(timeout) * time.Second
-	e.Use(middleware.SetRequestContextWithTimeout(timeoutContext))
 
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]any{
-			"status": "ok",
-		})
-	})
+	// Initialize repositories and services
+	newsRepo := postgresRepo.NewNewsRepository(dbConn)
+	authorRepo := postgresRepo.NewAuthorRepository(dbConn)
+	topicRepo := postgresRepo.NewTopicRepository(dbConn)
+	newsTopicRepo := postgresRepo.NewNewsTopicRepository(dbConn)
 
-	// Prepare Repository
-	//authorRepo := mysqlRepo.NewAuthorRepository(dbConn)   // Use MySQL repo
-	//newsRepo := mysqlRepo.NewNewsRepository(dbConn) // Use MySQL repo
-
-	newsRepo := postgresRepo.NewNewsRepository(dbConn)           // Use PostgreSQL repo
-	authorRepo := postgresRepo.NewAuthorRepository(dbConn)       // Use PostgreSQL repo
-	topicRepo := postgresRepo.NewTopicRepository(dbConn)         // Use PostgreSQL repo
-	newsTopicRepo := postgresRepo.NewNewsTopicRepository(dbConn) // Use PostgreSQL repo
-
-	// Build service Layer
 	ns := news.NewService(newsRepo, authorRepo, topicRepo, newsTopicRepo)
 	ts := topic.NewService(topicRepo)
-	rest.NewNewsHandler(e, ns)
-	rest.NewTopicHandler(e, ts)
 
-	// Start Server
+	// Initialize handlers with standard http handlers
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err = fmt.Fprint(w, `{"status": "ok"}`)
+		if err != nil {
+			return
+		}
+	})
+
+	rest.NewNewsHandler(mux, ns)
+	rest.NewTopicHandler(mux, ts)
+
+	// Middleware setup
+	handlerWithMiddleware := middleware.CORS(mux)
+	timeoutMiddleware := middleware.SetRequestContextWithTimeout(timeoutContext)
+	handlerWithTimeout := timeoutMiddleware(handlerWithMiddleware)
+
+	// Start server
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {
 		address = defaultAddress
 	}
-	log.Fatal(e.Start(address)) //nolint
+	server := &http.Server{
+		Addr:         address,
+		Handler:      handlerWithTimeout,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+
+	log.Printf("Starting server on %s", address)
+	log.Fatal(server.ListenAndServe())
 }

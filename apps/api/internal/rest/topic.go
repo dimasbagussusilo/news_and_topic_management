@@ -2,16 +2,15 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/bxcodec/go-clean-arch/domain"
 	"github.com/bxcodec/go-clean-arch/internal/dto"
-	"github.com/labstack/echo/v4"
 	"gopkg.in/go-playground/validator.v9"
 	"net/http"
 	"strconv"
-
-	"github.com/bxcodec/go-clean-arch/domain"
 )
 
-// TopicService represent the news's use cases
+// TopicService represents the topic's use cases
 //
 //go:generate mockery --name TopicService
 type TopicService interface {
@@ -23,37 +22,58 @@ type TopicService interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// TopicHandler  represent the http handler for news
+// TopicHandler represents the HTTP handler for topics
 type TopicHandler struct {
 	Service TopicService
 }
 
-// NewTopicHandler will initialize the news/ resources endpoint
-func NewTopicHandler(e *echo.Echo, svc TopicService) {
+// NewTopicHandler initializes the topic resources endpoints
+func NewTopicHandler(mux *http.ServeMux, svc TopicService) {
 	handler := &TopicHandler{
 		Service: svc,
 	}
-	e.GET("/topic", handler.Fetch)
-	e.POST("/topic", handler.Store)
-	e.GET("/topic/:id", handler.GetByID)
-	e.PUT("/topic/:id", handler.Update)
-	e.DELETE("/topic/:id", handler.Delete)
+	mux.HandleFunc("/topic", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handler.Fetch(w, r)
+		case http.MethodPost:
+			handler.Store(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/topic/", handler.HandleTopicByID)
 }
 
-func (a *TopicHandler) Fetch(c echo.Context) error {
-	limit, err := strconv.Atoi(c.QueryParam("limit"))
+// HandleTopicByID routes requests to the appropriate handler based on HTTP method
+func (a *TopicHandler) HandleTopicByID(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		a.GetByID(w, r)
+	case http.MethodPut:
+		a.Update(w, r)
+	case http.MethodDelete:
+		a.Delete(w, r)
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *TopicHandler) Fetch(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	limit, err := strconv.Atoi(query.Get("limit"))
 	if err != nil || limit <= 0 {
 		limit = defaultLimit
 	}
-	page, err := strconv.Atoi(c.QueryParam("page"))
+	page, err := strconv.Atoi(query.Get("page"))
 	if err != nil || page <= 0 {
 		page = defaultPage
 	}
 
-	idStr := c.QueryParam("id")
-	name := c.QueryParam("name")
-	sortBy := c.QueryParam("sort_by")
-	sortOrder := c.QueryParam("sort_order")
+	idStr := query.Get("id")
+	name := query.Get("name")
+	sortBy := query.Get("sort_by")
+	sortOrder := query.Get("sort_order")
 
 	// Build TopicFilter
 	filter := domain.TopicFilter{
@@ -61,7 +81,6 @@ func (a *TopicHandler) Fetch(c echo.Context) error {
 		Page:  int64(page),
 	}
 
-	// Set optional filters if available
 	if idStr != "" {
 		if id, err := strconv.ParseInt(idStr, 10, 64); err == nil {
 			filter.ID = id
@@ -77,17 +96,15 @@ func (a *TopicHandler) Fetch(c echo.Context) error {
 		filter.SortOrder = sortOrder
 	}
 
-	// Context creation and service call
-	ctx := c.Request().Context()
+	ctx := r.Context()
 	listAr, totalData, err := a.Service.Fetch(ctx, filter)
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		http.Error(w, dto.ResponseError{Message: err.Error()}.Message, dto.GetStatusCode(err))
+		return
 	}
 
-	// Calculate the total pages
 	totalPages := (int64(totalData) + int64(filter.Limit) - 1) / int64(filter.Limit)
 
-	// Construct the response
 	response := dto.Response{
 		Data: listAr,
 		Meta: dto.PaginationMeta{
@@ -96,103 +113,113 @@ func (a *TopicHandler) Fetch(c echo.Context) error {
 			TotalData:   totalData,
 		},
 	}
-
-	return c.JSON(http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		return
+	}
 }
 
-// GetByID will get news by given id
-func (a *TopicHandler) GetByID(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
+func (a *TopicHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Path[len("/topic/"):]
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+		http.Error(w, domain.ErrNotFound.Error(), http.StatusNotFound)
+		return
 	}
 
-	id := int64(idP)
-	ctx := c.Request().Context()
-
+	ctx := r.Context()
 	listAr, _, err := a.Service.Fetch(ctx, domain.TopicFilter{ID: id, Page: 1, Limit: 1})
+	if err != nil || len(listAr) == 0 {
+		http.Error(w, domain.ErrNotFound.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(listAr[0])
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		return
 	}
-
-	if len(listAr) == 0 {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
-	}
-
-	return c.JSON(http.StatusOK, listAr[0])
 }
 
 func isRequestTopicValid(m *domain.Topic) (bool, error) {
 	validate := validator.New()
 	err := validate.Struct(m)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return err == nil, err
 }
 
-// Store will store the news by given request body
-func (a *TopicHandler) Store(c echo.Context) (err error) {
+func (a *TopicHandler) Store(w http.ResponseWriter, r *http.Request) {
 	var createTopicReq domain.Topic
-	err = c.Bind(&createTopicReq)
+	err := json.NewDecoder(r.Body).Decode(&createTopicReq)
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
 	}
 
 	if _, err = isRequestTopicValid(&createTopicReq); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	ctx := c.Request().Context()
+	ctx := r.Context()
 	err = a.Service.Store(ctx, &createTopicReq)
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		http.Error(w, dto.ResponseError{Message: err.Error()}.Message, dto.GetStatusCode(err))
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "success create topic"})
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(map[string]string{"message": "success create topic"})
+	if err != nil {
+		return
+	}
 }
 
-// Update will update news by given param
-func (a *TopicHandler) Update(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
+func (a *TopicHandler) Update(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Path[len("/topic/"):]
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+		http.Error(w, domain.ErrNotFound.Error(), http.StatusNotFound)
+		return
 	}
-
-	id := int64(idP)
 
 	updateTopicReq := domain.Topic{
 		ID: id,
 	}
-	err = c.Bind(&updateTopicReq)
+	err = json.NewDecoder(r.Body).Decode(&updateTopicReq)
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
 	}
 
-	ctx := c.Request().Context()
-
+	ctx := r.Context()
 	err = a.Service.Update(ctx, &updateTopicReq)
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		http.Error(w, dto.ResponseError{Message: err.Error()}.Message, dto.GetStatusCode(err))
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "success update topic"})
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(map[string]string{"message": "success update topic"})
+	if err != nil {
+		return
+	}
 }
 
-// Delete will delete news by given param
-func (a *TopicHandler) Delete(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
+func (a *TopicHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Path[len("/topic/"):]
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+		http.Error(w, domain.ErrNotFound.Error(), http.StatusNotFound)
+		return
 	}
 
-	id := int64(idP)
-	ctx := c.Request().Context()
-
+	ctx := r.Context()
 	err = a.Service.Delete(ctx, id)
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		http.Error(w, dto.ResponseError{Message: err.Error()}.Message, dto.GetStatusCode(err))
+		return
 	}
 
-	return c.NoContent(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }

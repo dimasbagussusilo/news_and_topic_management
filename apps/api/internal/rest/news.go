@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/bxcodec/go-clean-arch/internal/dto"
 	"github.com/bxcodec/go-clean-arch/internal/dto/news"
 	"gopkg.in/go-playground/validator.v9"
@@ -10,12 +11,9 @@ import (
 	"time"
 
 	"github.com/bxcodec/go-clean-arch/domain"
-	"github.com/labstack/echo/v4"
 )
 
-// NewsService represent the news's use cases
-//
-//go:generate mockery --name NewsService
+// NewsService represents the news's use cases
 type NewsService interface {
 	Fetch(ctx context.Context, filter domain.NewsFilter) ([]domain.News, int64, error)
 	GetByID(ctx context.Context, id int64) (domain.News, error)
@@ -25,96 +23,102 @@ type NewsService interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// NewsHandler  represent the http handler for news
+// NewsHandler represents the HTTP handler for news
 type NewsHandler struct {
 	Service NewsService
 }
 
-const defaultLimit = 10
-const defaultPage = 1
+const (
+	defaultLimit = 10
+	defaultPage  = 1
+)
 
-// NewNewsHandler will initialize the news/ resources endpoint
-func NewNewsHandler(e *echo.Echo, svc NewsService) {
+// NewNewsHandler initializes the news resources endpoints
+func NewNewsHandler(mux *http.ServeMux, svc NewsService) {
 	handler := &NewsHandler{
 		Service: svc,
 	}
-	e.GET("/news", handler.Fetch)
-	e.POST("/news", handler.Store)
-	e.GET("/news/:id", handler.GetByID)
-	e.PUT("/news/:id", handler.Update)
-	e.DELETE("/news/:id", handler.Delete)
+	mux.HandleFunc("/news", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handler.Fetch(w, r)
+		case http.MethodPost:
+			handler.Store(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/news/", handler.NewsHandler) // Combines GetByID, Update, and Delete based on HTTP method
 }
 
-func (a *NewsHandler) Fetch(c echo.Context) error {
-	limit, err := strconv.Atoi(c.QueryParam("limit"))
+// Fetch handles GET requests to fetch news with optional filters
+func (a *NewsHandler) Fetch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 	if err != nil || limit <= 0 {
 		limit = defaultLimit
 	}
-	page, err := strconv.Atoi(c.QueryParam("page"))
+	page, err := strconv.Atoi(r.URL.Query().Get("page"))
 	if err != nil || page <= 0 {
 		page = defaultPage
 	}
 
-	idStr := c.QueryParam("id")
-	title := c.QueryParam("title")
-	status := c.QueryParam("status")
-	authorIDStr := c.QueryParam("author_id")
-	startDateStr := c.QueryParam("start_date")
-	endDateStr := c.QueryParam("end_date")
-	sortBy := c.QueryParam("sort_by")
-	sortOrder := c.QueryParam("sort_order")
-
-	// Build NewsFilter
+	// Parse optional filters from query parameters
 	filter := domain.NewsFilter{
 		Limit: int64(limit),
 		Page:  int64(page),
 	}
 
-	// Set optional filters if available
-	if idStr != "" {
+	// Set optional filters
+	if idStr := r.URL.Query().Get("id"); idStr != "" {
 		if id, err := strconv.ParseInt(idStr, 10, 64); err == nil {
 			filter.ID = id
 		}
 	}
-	if title != "" {
+	if title := r.URL.Query().Get("title"); title != "" {
 		filter.Title = title
 	}
-	if status != "" {
+	if status := r.URL.Query().Get("status"); status != "" {
 		filter.Status = status
 	}
-	if authorIDStr != "" {
+	if authorIDStr := r.URL.Query().Get("author_id"); authorIDStr != "" {
 		if authorID, err := strconv.ParseInt(authorIDStr, 10, 64); err == nil {
 			filter.AuthorID = authorID
 		}
 	}
-	if startDateStr != "" {
+	if startDateStr := r.URL.Query().Get("start_date"); startDateStr != "" {
 		if startDate, err := time.Parse(time.RFC3339, startDateStr); err == nil {
 			filter.StartDate = startDate
 		}
 	}
-	if endDateStr != "" {
+	if endDateStr := r.URL.Query().Get("end_date"); endDateStr != "" {
 		if endDate, err := time.Parse(time.RFC3339, endDateStr); err == nil {
 			filter.EndDate = endDate
 		}
 	}
-	if sortBy != "" {
+	if sortBy := r.URL.Query().Get("sort_by"); sortBy != "" {
 		filter.SortBy = sortBy
 	}
-	if sortOrder != "" {
+	if sortOrder := r.URL.Query().Get("sort_order"); sortOrder != "" {
 		filter.SortOrder = sortOrder
 	}
 
-	// Context creation and service call
-	ctx := c.Request().Context()
+	// Fetch news using the service
+	ctx := r.Context()
 	listAr, totalData, err := a.Service.Fetch(ctx, filter)
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		http.Error(w, err.Error(), dto.GetStatusCode(err))
+		return
 	}
 
-	// Calculate the total pages
-	totalPages := (int64(totalData) + int64(filter.Limit) - 1) / int64(filter.Limit)
+	// Calculate total pages
+	totalPages := ((totalData) + (filter.Limit) - 1) / (filter.Limit)
 
-	// Construct the response
+	// Construct response
 	response := dto.Response{
 		Data: listAr,
 		Meta: dto.PaginationMeta{
@@ -123,30 +127,48 @@ func (a *NewsHandler) Fetch(c echo.Context) error {
 			TotalData:   totalData,
 		},
 	}
-
-	return c.JSON(http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		return
+	}
 }
 
-// GetByID will get news by given id
-func (a *NewsHandler) GetByID(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
+// NewsHandler routes based on HTTP method for ID-based operations
+func (a *NewsHandler) NewsHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Path[len("/news/"):]
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+		http.Error(w, "Invalid ID", http.StatusNotFound)
+		return
 	}
 
-	id := int64(idP)
-	ctx := c.Request().Context()
+	switch r.Method {
+	case http.MethodGet:
+		a.GetByID(w, r, id)
+	case http.MethodPut:
+		a.Update(w, r, id)
+	case http.MethodDelete:
+		a.Delete(w, r, id)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
 
-	listAr, _, err := a.Service.Fetch(ctx, domain.NewsFilter{ID: id, Page: 1, Limit: 1})
+// GetByID retrieves news by the given ID
+func (a *NewsHandler) GetByID(w http.ResponseWriter, r *http.Request, id int64) {
+	ctx := r.Context()
+	newsItem, _, err := a.Service.Fetch(ctx, domain.NewsFilter{ID: id, Page: 1, Limit: 1})
+	if err != nil || len(newsItem) == 0 {
+		http.Error(w, "News not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(newsItem[0])
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		return
 	}
-
-	if len(listAr) == 0 {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
-	}
-
-	return c.JSON(http.StatusOK, listAr[0])
 }
 
 func isRequestValid(m *news.CreateNewsReq) (bool, error) {
@@ -159,67 +181,64 @@ func isRequestValid(m *news.CreateNewsReq) (bool, error) {
 }
 
 // Store will store the news by given request body
-func (a *NewsHandler) Store(c echo.Context) (err error) {
+func (a *NewsHandler) Store(w http.ResponseWriter, r *http.Request) {
 	var createNewsReq news.CreateNewsReq
-	err = c.Bind(&createNewsReq)
+	err := json.NewDecoder(r.Body).Decode(&createNewsReq)
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
 	}
 
 	if _, err = isRequestValid(&createNewsReq); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	ctx := c.Request().Context()
+	ctx := r.Context()
 	err = a.Service.Store(ctx, &createNewsReq)
 	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
+		http.Error(w, err.Error(), dto.GetStatusCode(err))
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "success create news"})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(map[string]string{"message": "success create news"})
+	if err != nil {
+		return
+	}
 }
 
-// Update will update news by given param
-func (a *NewsHandler) Update(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
+// Update updates the news based on the given request
+func (a *NewsHandler) Update(w http.ResponseWriter, r *http.Request, id int64) {
+	var updateNewsReq news.UpdateNewsReq
+	updateNewsReq.ID = &id
+
+	if err := json.NewDecoder(r.Body).Decode(&updateNewsReq); err != nil {
+		http.Error(w, "Unprocessable entity", http.StatusUnprocessableEntity)
+		return
+	}
+
+	ctx := r.Context()
+	if err := a.Service.Update(ctx, &updateNewsReq); err != nil {
+		http.Error(w, err.Error(), dto.GetStatusCode(err))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(map[string]string{"message": "success update news"})
 	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+		return
 	}
-
-	id := int64(idP)
-
-	updateNewsReq := news.UpdateNewsReq{
-		ID: &id,
-	}
-	err = c.Bind(&updateNewsReq)
-	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
-	ctx := c.Request().Context()
-
-	err = a.Service.Update(ctx, &updateNewsReq)
-	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
-	}
-
-	return c.JSON(http.StatusCreated, map[string]string{"message": "success update news"})
 }
 
-// Delete will delete news by given param
-func (a *NewsHandler) Delete(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return c.JSON(http.StatusNotFound, domain.ErrNotFound.Error())
+// Delete removes the news by the given ID
+func (a *NewsHandler) Delete(w http.ResponseWriter, r *http.Request, id int64) {
+	ctx := r.Context()
+	if err := a.Service.Delete(ctx, id); err != nil {
+		http.Error(w, err.Error(), dto.GetStatusCode(err))
+		return
 	}
 
-	id := int64(idP)
-	ctx := c.Request().Context()
-
-	err = a.Service.Delete(ctx, id)
-	if err != nil {
-		return c.JSON(dto.GetStatusCode(err), dto.ResponseError{Message: err.Error()})
-	}
-
-	return c.NoContent(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }

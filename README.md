@@ -63,7 +63,13 @@ To run tests for everything in the project:
 API Documentation
 -----------------
 
-API endpoints are documented using OpenAPI. You can find the documentation in `openapi.json`. To view the documentation, you can use a Swagger UI tool.
+Explore our interactive Swagger documentation to unlock the full potential of our API!
+
+Visit:
+
+    {{BASE_URL}}/swagger/index.html
+
+Just replace `{{BASE_URL}}` with your base URL and start exploring!
 
 Endpoints
 ---------
@@ -146,6 +152,9 @@ Your project includes a test suite to ensure functionality. To run the tests, us
     moon :tests
 
 Make sure that your testing framework is correctly set up in the project. You can add new tests by creating files in the `tests` directory.
+
+
+
 
 License
 -------

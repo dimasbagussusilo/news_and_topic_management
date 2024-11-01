@@ -1,0 +1,388 @@
+definitions:
+  main.Author:
+    properties:
+      id:
+        description: ID of the author
+        type: integer
+      name:
+        description: Name of the author
+        type: string
+    type: object
+  main.NewsArticle:
+    properties:
+      author:
+        allOf:
+        - $ref: '#/definitions/main.Author'
+        description: Author of the news article
+      content:
+        description: Content of the news article (HTML)
+        type: string
+      created_at:
+        description: Created timestamp of the news article
+        type: string
+      id:
+        description: ID of the news article
+        type: integer
+      status:
+        description: Status of the news article
+        type: string
+      title:
+        description: Title of the news article
+        type: string
+      topics:
+        description: List of topics associated with the news article
+        items:
+          $ref: '#/definitions/main.Topic'
+        type: array
+      updated_at:
+        description: Updated timestamp of the news article
+        type: string
+    type: object
+  main.NewsRequest:
+    properties:
+      author_id:
+        type: integer
+      content:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      topic_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - author_id
+    - content
+    - status
+    - title
+    - topic_ids
+    type: object
+  main.PaginationMeta:
+    properties:
+      current_page:
+        description: Current page number
+        type: integer
+      total_data:
+        description: Total number of data entries
+        type: integer
+      total_pages:
+        description: Total number of pages
+        type: integer
+    type: object
+  main.ResponseMessage:
+    properties:
+      message:
+        type: string
+    type: object
+  main.ResponseNews:
+    properties:
+      data:
+        description: List of news articles
+        items:
+          $ref: '#/definitions/main.NewsArticle'
+        type: array
+      meta:
+        allOf:
+        - $ref: '#/definitions/main.PaginationMeta'
+        description: Metadata about the response
+    type: object
+  main.ResponseTopic:
+    properties:
+      data:
+        description: List of news articles
+        items:
+          $ref: '#/definitions/main.Topic'
+        type: array
+      meta:
+        allOf:
+        - $ref: '#/definitions/main.PaginationMeta'
+        description: Metadata about the response
+    type: object
+  main.Topic:
+    properties:
+      id:
+        description: ID of the topic
+        type: integer
+      name:
+        description: Name of the topic
+        type: string
+    type: object
+  main.TopicRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is a sample server Petstore server.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Swagger Example API
+  version: "1.0"
+paths:
+  /news:
+    get:
+      consumes:
+      - application/json
+      description: Fetch news articles with optional filters like ID, title, status,
+        author_id, start_date, end_date, sort_by, and sort_order.
+      parameters:
+      - description: Limit the number of results
+        in: query
+        name: limit
+        type: integer
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Filter by news ID
+        in: query
+        name: id
+        type: integer
+      - description: Filter by news title
+        in: query
+        name: title
+        type: string
+      - description: Filter by news status
+        in: query
+        name: status
+        type: string
+      - description: Filter by author ID
+        in: query
+        name: author_id
+        type: integer
+      - description: Filter news starting from this date (RFC3339 format)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter news until this date (RFC3339 format)
+        in: query
+        name: end_date
+        type: string
+      - description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - description: Order of sorting (asc or desc)
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with the list of news
+          schema:
+            $ref: '#/definitions/main.ResponseNews'
+      summary: Fetch news articles
+      tags:
+      - News
+    post:
+      consumes:
+      - application/json
+      description: Create a news article with the provided details
+      parameters:
+      - description: Create news request
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/main.NewsRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success message
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+      summary: Create a new news article
+      tags:
+      - News
+  /news/{id}:
+    delete:
+      description: Remove the news article with the specified ID
+      parameters:
+      - description: News ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a news article
+      tags:
+      - News
+    get:
+      consumes:
+      - application/json
+      description: Fetch a news article by its unique ID
+      parameters:
+      - description: ID of the news article
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with the news article
+          schema:
+            $ref: '#/definitions/main.NewsArticle'
+      summary: Get news article by ID
+      tags:
+      - News
+    put:
+      consumes:
+      - application/json
+      description: Update the news article with the provided ID using the details
+        provided in the request body
+      parameters:
+      - description: News ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update news request
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/main.NewsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+      summary: Update an existing news article
+      tags:
+      - News
+  /topic:
+    get:
+      description: Retrieve a list of topics with optional pagination and filtering
+      parameters:
+      - default: 10
+        description: Limit the number of topics returned
+        in: query
+        name: limit
+        type: integer
+      - default: 1
+        description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Filter by topic ID
+        in: query
+        name: id
+        type: integer
+      - description: Filter by topic name
+        in: query
+        name: name
+        type: string
+      - description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - description: Sort order (asc or desc)
+        in: query
+        name: sort_order
+        type: string
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/main.ResponseTopic'
+      summary: Fetch topics
+      tags:
+      - Topic
+    post:
+      consumes:
+      - application/json
+      description: Add a new topic to the system
+      parameters:
+      - description: Create Topic Request
+        in: body
+        name: topic
+        required: true
+        schema:
+          $ref: '#/definitions/main.TopicRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful response message
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+      summary: Create a new topic
+      tags:
+      - Topic
+  /topic/{id}:
+    delete:
+      description: Delete an existing topic by its ID
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a topic by ID
+      tags:
+      - Topic
+    get:
+      description: Retrieve a topic by its ID
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Successful response with the topic
+          schema:
+            $ref: '#/definitions/main.Topic'
+      summary: Get topic by ID
+      tags:
+      - Topic
+    put:
+      consumes:
+      - application/json
+      description: Update the details of a topic by its ID
+      parameters:
+      - description: Topic ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update Topic Request
+        in: body
+        name: topic
+        required: true
+        schema:
+          $ref: '#/definitions/main.TopicRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response message
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+      summary: Update an existing topic
+      tags:
+      - Topic
+swagger: "2.0"

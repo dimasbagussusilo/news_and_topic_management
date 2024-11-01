@@ -10,12 +10,14 @@ import (
 	"strconv"
 	"time"
 
+	_ "github.com/bxcodec/go-clean-arch/app/docs"
 	postgresRepo "github.com/bxcodec/go-clean-arch/internal/repository/postgres" // Update the repository package
 	"github.com/bxcodec/go-clean-arch/internal/rest"
 	"github.com/bxcodec/go-clean-arch/internal/rest/middleware"
 	"github.com/bxcodec/go-clean-arch/news"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 const (
@@ -30,6 +32,19 @@ func init() {
 	}
 }
 
+// @title Swagger Example API
+// @version 1.0
+// @description This is a sample server Petstore server.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host
 func main() {
 	// Prepare database connection
 	dbHost := os.Getenv("DATABASE_HOST")
@@ -37,6 +52,10 @@ func main() {
 	dbUser := os.Getenv("DATABASE_USER")
 	dbPass := os.Getenv("DATABASE_PASS")
 	dbName := os.Getenv("DATABASE_NAME")
+	address := os.Getenv("SERVER_ADDRESS")
+	if address == "" {
+		address = defaultAddress
+	}
 
 	connection := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
 	dbConn, err := sql.Open("postgres", connection)
@@ -84,6 +103,9 @@ func main() {
 		}
 	})
 
+	// Swagger endpoint
+	mux.Handle("/swagger/", httpSwagger.WrapHandler)
+
 	rest.NewNewsHandler(mux, ns)
 	rest.NewTopicHandler(mux, ts)
 
@@ -93,10 +115,6 @@ func main() {
 	handlerWithTimeout := timeoutMiddleware(handlerWithMiddleware)
 
 	// Start server
-	address := os.Getenv("SERVER_ADDRESS")
-	if address == "" {
-		address = defaultAddress
-	}
 	server := &http.Server{
 		Addr:         address,
 		Handler:      handlerWithTimeout,

@@ -21,13 +21,13 @@ project:
 
 tasks:
   up:
-    command: 'make up'
+    command: 'make up' # build necessary things like postgre, golang libs, etc
 
   down:
-    command: 'make down'
+    command: 'make down' # stop all 'up' run
 
   destroy:
-    command: 'make destroy'
+    command: 'make destroy' # destroy all 'up' run
 
   tests:
-    command: 'make tests'
+    command: 'make tests' # test everything in the project

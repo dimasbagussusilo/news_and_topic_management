@@ -22,6 +22,8 @@ Getting Started
 
 *   **Go** (version 1.20)
 *   **Docker**
+*   **Makefile**
+*   **Go AIR**
 *   [ZOG Moonrepo](https://github.com/zero-one-group/monorepo)
 
 ### Installation
